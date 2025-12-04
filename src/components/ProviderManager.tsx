@@ -581,7 +581,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                   <span className="text-sm text-muted-foreground">已用额度</span>
                   <span className="font-semibold">
-                    {usageData.is_unlimited ? '不进行计算' : formatCurrency(usageData.used_balance)}
+                    {formatCurrency(usageData.used_balance)}
                   </span>
                 </div>
 
