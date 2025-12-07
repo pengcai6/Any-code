@@ -110,6 +110,68 @@ pub fn expand_user_path(input: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
+/// Resolve Windows executable path by trying common extensions
+/// This handles cases where users input paths without extensions (e.g., "codex" instead of "codex.cmd")
+fn resolve_windows_executable(path: &PathBuf) -> Result<PathBuf, String> {
+    // If path exists and is a file, use it directly
+    if path.exists() && path.is_file() {
+        return Ok(path.clone());
+    }
+
+    // On Windows, try common executable extensions
+    #[cfg(target_os = "windows")]
+    {
+        let extensions = [".cmd", ".exe", ".bat", ".ps1"];
+
+        // If the path doesn't have an extension, try adding common ones
+        if path.extension().is_none() {
+            for ext in &extensions {
+                let with_ext = PathBuf::from(format!("{}{}", path.display(), ext));
+                if with_ext.exists() && with_ext.is_file() {
+                    log::info!("[Codex] Resolved path with extension: {}", with_ext.display());
+                    return Ok(with_ext);
+                }
+            }
+        }
+
+        // If path is a directory, try to find codex executable inside
+        if path.exists() && path.is_dir() {
+            for ext in &extensions {
+                let candidate = path.join(format!("codex{}", ext));
+                if candidate.exists() && candidate.is_file() {
+                    log::info!("[Codex] Found codex in directory: {}", candidate.display());
+                    return Ok(candidate);
+                }
+            }
+            return Err(format!(
+                "Path is a directory but no codex executable found inside: {}",
+                path.display()
+            ));
+        }
+
+        // Path doesn't exist and no extension variant found
+        if !path.exists() {
+            return Err(format!(
+                "File does not exist: {}. On Windows, try specifying the full path with extension (e.g., codex.cmd)",
+                path.display()
+            ));
+        }
+    }
+
+    // On non-Windows, just check if path exists
+    #[cfg(not(target_os = "windows"))]
+    {
+        if !path.exists() {
+            return Err("File does not exist".to_string());
+        }
+        if !path.is_file() {
+            return Err("Path is not a file".to_string());
+        }
+    }
+
+    Ok(path.clone())
+}
+
 pub fn update_binary_override(tool: &str, override_path: &str) -> Result<(), String> {
     let home = dirs::home_dir().ok_or("Cannot find home directory".to_string())?;
     let config_path = home.join(".claude").join("binaries.json");
@@ -359,14 +421,11 @@ pub async fn set_custom_codex_path(app: AppHandle, custom_path: String) -> Resul
     log::info!("[Codex] Setting custom path: {}", custom_path);
 
     let expanded_path = expand_user_path(&custom_path)?;
-    if !expanded_path.exists() {
-        return Err("File does not exist".to_string());
-    }
-    if !expanded_path.is_file() {
-        return Err("Path is not a file".to_string());
-    }
 
-    let path_str = expanded_path
+    // On Windows, try to resolve the executable path with extensions
+    let resolved_path = resolve_windows_executable(&expanded_path)?;
+
+    let path_str = resolved_path
         .to_str()
         .ok_or_else(|| "Invalid path encoding".to_string())?
         .to_string();
