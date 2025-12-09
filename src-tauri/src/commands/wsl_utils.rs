@@ -687,7 +687,12 @@ pub fn wsl_to_windows_path(wsl_path: &str) -> String {
             .to_uppercase()
             .next()
             .unwrap();
-        let rest = &wsl_path[6..].replace('/', "\\");
+        let mut rest = wsl_path[6..].replace('/', "\\");
+        if rest.is_empty() {
+            rest = "\\".to_string();
+        } else if !rest.starts_with('\\') {
+            rest = format!("\\{}", rest);
+        }
         let windows_path = format!("{}:{}", drive, rest);
         log::debug!("[WSL] Path converted: {} -> {}", wsl_path, windows_path);
         return windows_path;

@@ -15,6 +15,7 @@ use super::parser::{
     parse_gemini_line_flexible,
 };
 use super::types::{GeminiExecutionOptions, GeminiInstallStatus, GeminiProcessState};
+use crate::claude_binary::detect_binary_for_tool;
 use crate::commands::claude::apply_no_window_async;
 
 // ============================================================================
@@ -23,6 +24,21 @@ use crate::commands::claude::apply_no_window_async;
 
 /// Find Gemini CLI binary path
 pub fn find_gemini_binary() -> Result<String, String> {
+    // 0. 统一的运行时检测（环境变量/注册表/常见路径/用户配置）
+    let (_env, detected) = detect_binary_for_tool("gemini", "GEMINI_CLI_PATH", "gemini");
+    if let Some(inst) = detected {
+        if test_gemini_binary(&inst.path) {
+            log::info!(
+                "Found Gemini CLI via runtime detection ({}): {}",
+                inst.source,
+                inst.path
+            );
+            return Ok(inst.path);
+        } else {
+            log::warn!("Gemini CLI candidate not executable: {}", inst.path);
+        }
+    }
+
     // 1. Check environment variable
     if let Ok(path) = std::env::var("GEMINI_CLI_PATH") {
         if std::path::Path::new(&path).exists() {
@@ -179,6 +195,19 @@ pub fn get_gemini_version(gemini_path: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+fn test_gemini_binary(path: &str) -> bool {
+    let mut cmd = std::process::Command::new(path);
+    cmd.arg("--version");
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 // ============================================================================

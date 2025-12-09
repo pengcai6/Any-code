@@ -25,6 +25,7 @@ pub struct RuntimeEnvironment {
 pub struct BinarySearchConfig {
     pub claude: Option<BinarySearchSection>,
     pub codex: Option<BinarySearchSection>,
+    pub gemini: Option<BinarySearchSection>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -120,6 +121,7 @@ fn pick_section(cfg: &BinarySearchConfig, key: &str) -> Option<BinarySearchSecti
     match key {
         "claude" => cfg.claude.clone(),
         "codex" => cfg.codex.clone(),
+        "gemini" => cfg.gemini.clone(),
         _ => None,
     }
 }
@@ -568,31 +570,61 @@ fn collect_runtime_candidates(
                 search_roots.push(format!(r"{}\{}", program_files, tool));
                 search_roots.push(format!(r"{}\{}\bin", program_files, tool));
                 search_roots.push(format!(r"{}\nodejs", program_files));
+                search_roots.push(format!(r"{}\nodejs\node_modules", program_files));
             }
             if let Ok(program_files_x86) = std::env::var("ProgramFiles(x86)") {
                 search_roots.push(format!(r"{}\{}", program_files_x86, tool));
                 search_roots.push(format!(r"{}\nodejs", program_files_x86));
+                search_roots.push(format!(r"{}\nodejs\node_modules", program_files_x86));
             }
             if let Ok(appdata) = std::env::var("APPDATA") {
                 search_roots.push(format!(r"{}\npm", appdata));
                 search_roots.push(format!(r"{}\{}", appdata, tool));
+                search_roots.push(format!(r"{}\pnpm", appdata));
             }
             if let Ok(local_appdata) = std::env::var("LOCALAPPDATA") {
                 search_roots.push(format!(r"{}\Programs\{}", local_appdata, tool));
                 search_roots.push(format!(r"{}\npm", local_appdata));
+                search_roots.push(format!(r"{}\pnpm", local_appdata));
             }
             if let Ok(userprofile) = std::env::var("USERPROFILE") {
                 search_roots.push(format!(r"{}\scoop\shims", userprofile));
                 search_roots.push(format!(r"{}\scoop\apps\{}\current", userprofile, tool));
+                search_roots.push(format!(r"{}\scoop\apps\{}\current\bin", userprofile, tool));
                 search_roots.push(format!(r"{}\AppData\Roaming\npm", userprofile));
                 search_roots.push(format!(r"{}\.npm-global\bin", userprofile));
                 search_roots.push(format!(r"{}\.local\bin", userprofile));
                 search_roots.push(format!(r"{}\.cargo\bin", userprofile));
                 search_roots.push(format!(r"{}\Yarn\bin", userprofile));
+                search_roots.push(format!(r"{}\.pnpm-global\bin", userprofile));
+                search_roots.push(format!(r"{}\AppData\Local\pnpm", userprofile));
+                search_roots.push(format!(r"{}\.volta\bin", userprofile));
+                search_roots.push(format!(r"{}\.fnm\aliases\default\bin", userprofile));
+                search_roots.push(format!(r"{}\.local\share\pnpm", userprofile));
             }
             if let Ok(programdata) = std::env::var("ProgramData") {
                 search_roots.push(format!(r"{}\chocolatey\bin", programdata));
                 search_roots.push(format!(r"{}\scoop\shims", programdata));
+                search_roots.push(format!(r"{}\pnpm", programdata));
+            }
+
+            if let Ok(pnpm_home) = std::env::var("PNPM_HOME") {
+                search_roots.push(pnpm_home);
+            }
+            if let Ok(npm_prefix) = std::env::var("NPM_CONFIG_PREFIX") {
+                search_roots.push(format!(r"{}\bin", npm_prefix));
+                search_roots.push(npm_prefix);
+            }
+            if let Ok(volta_home) = std::env::var("VOLTA_HOME") {
+                search_roots.push(format!(r"{}\bin", volta_home));
+            }
+            if let Ok(nvm_home) = std::env::var("NVM_HOME") {
+                search_roots.push(nvm_home.clone());
+                search_roots.push(format!(r"{}\bin", nvm_home));
+            }
+            if let Ok(nvm_symlink) = std::env::var("NVM_SYMLINK") {
+                search_roots.push(nvm_symlink.clone());
+                search_roots.push(format!(r"{}\nodejs", nvm_symlink));
             }
 
             // 便携/自定义常见目录
@@ -619,6 +651,14 @@ fn collect_runtime_candidates(
                 "/opt/local/bin".to_string(), // MacPorts
                 "/Applications".to_string(),
             ];
+
+            if let Ok(pnpm_home) = std::env::var("PNPM_HOME") {
+                search_roots.push(pnpm_home);
+            }
+            if let Ok(npm_prefix) = std::env::var("NPM_CONFIG_PREFIX") {
+                search_roots.push(format!("{}/bin", npm_prefix));
+                search_roots.push(npm_prefix);
+            }
 
             if let Ok(home) = std::env::var("HOME") {
                 search_roots.extend(vec![
@@ -663,6 +703,14 @@ fn collect_runtime_candidates(
                 "/snap/bin".to_string(),
                 "/var/lib/flatpak/exports/bin".to_string(),
             ];
+
+            if let Ok(pnpm_home) = std::env::var("PNPM_HOME") {
+                search_roots.push(pnpm_home);
+            }
+            if let Ok(npm_prefix) = std::env::var("NPM_CONFIG_PREFIX") {
+                search_roots.push(format!("{}/bin", npm_prefix));
+                search_roots.push(npm_prefix);
+            }
 
             if let Ok(home) = std::env::var("HOME") {
                 search_roots.extend(vec![
