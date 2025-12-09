@@ -959,7 +959,9 @@
     "enableProjectContext": "启用项目上下文",
     "useAcemcpSearch": "使用 acemcp 搜索相关代码",
     "smartContextExtraction": "智能上下文提取",
-    "aiFilterMessages": "AI 筛选相关消息（+40% 准确性）"
+    "aiFilterMessages": "AI 筛选相关消息（+40% 准确性）",
+    "manageApiConfig": "管理API配置",
+    "send": "发送"
   },
   "widget": {
     "collapseResult": "收起结果",

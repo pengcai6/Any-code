@@ -282,7 +282,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
 
           <DropdownMenuItem onClick={() => window.dispatchEvent(new CustomEvent('open-prompt-api-settings'))} className="cursor-pointer">
             <Settings className="h-3 w-3 mr-2" />
-            管理API配置
+            {t('promptInput.manageApiConfig')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -296,7 +296,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           disabled={disabled}
           className="h-8 shadow-md bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white font-medium"
         >
-          取消
+          {t('buttons.cancel')}
         </Button>
       ) : (
         <Button
@@ -305,7 +305,7 @@ export const ControlBar: React.FC<ControlBarProps> = ({
           size="default"
           className="h-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm transition-all duration-200"
         >
-          发送
+          {t('promptInput.send')}
         </Button>
       )}
     </div>

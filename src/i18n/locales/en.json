@@ -959,7 +959,9 @@
     "enableProjectContext": "Enable Project Context",
     "useAcemcpSearch": "Use acemcp to search related code",
     "smartContextExtraction": "Smart Context Extraction",
-    "aiFilterMessages": "AI filters relevant messages (+40% accuracy)"
+    "aiFilterMessages": "AI filters relevant messages (+40% accuracy)",
+    "manageApiConfig": "Manage API Config",
+    "send": "Send"
   },
   "widget": {
     "collapseResult": "Collapse result",
