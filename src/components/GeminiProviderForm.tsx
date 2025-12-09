@@ -31,6 +31,7 @@ import {
   extractModelFromEnv,
   type ProviderCategory,
 } from '@/config/geminiProviderPresets';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface GeminiProviderFormProps {
   initialData?: GeminiProviderConfig;
@@ -43,6 +44,7 @@ export default function GeminiProviderForm({
   onSubmit,
   onCancel
 }: GeminiProviderFormProps) {
+  const { t } = useTranslation();
   // 预设选择
   const [selectedPreset, setSelectedPreset] = useState<string>('');
 
@@ -93,7 +95,7 @@ export default function GeminiProviderForm({
   // 验证表单
   const validateForm = (): string | null => {
     if (!name.trim()) {
-      return '请输入供应商名称';
+      return t('provider.providerNameRequired');
     }
     // 官方供应商不需要额外验证
     if (category === 'official') {
@@ -101,14 +103,14 @@ export default function GeminiProviderForm({
     }
     // 第三方供应商需要 API Key
     if (!apiKey.trim()) {
-      return '请输入 API Key';
+      return t('provider.apiKeyRequired');
     }
     // 第三方供应商需要 Base URL
     if (!baseUrl.trim()) {
-      return '请输入 API 地址';
+      return t('provider.baseUrlRequired');
     }
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
-      return 'API 地址必须以 http:// 或 https:// 开头';
+      return t('provider.baseUrlInvalid');
     }
     return null;
   };
@@ -150,7 +152,7 @@ export default function GeminiProviderForm({
     } catch (error) {
       console.error('Failed to save Gemini provider config:', error);
       setToastMessage({
-        message: `${isEditing ? '更新' : '添加'}配置失败: ${error}`,
+        message: t('provider.saveConfigFailed', { error: String(error) }),
         type: 'error'
       });
     } finally {
@@ -170,10 +172,10 @@ export default function GeminiProviderForm({
       {!isEditing && (
         <Card className="p-4">
           <div className="space-y-2">
-            <Label>选择预设模板</Label>
+            <Label>{t('provider.selectPreset')}</Label>
             <Select value={selectedPreset} onValueChange={handlePresetChange}>
               <SelectTrigger>
-                <SelectValue placeholder="选择一个预设或从空白开始..." />
+                <SelectValue placeholder={t('provider.selectPresetPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {geminiProviderPresets.map((preset) => (
@@ -182,12 +184,12 @@ export default function GeminiProviderForm({
                       <span>{preset.name}</span>
                       {preset.category === 'official' && (
                         <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded">
-                          官方
+                          {t('provider.official')}
                         </span>
                       )}
                       {preset.isPartner && (
                         <span className="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-1.5 py-0.5 rounded">
-                          合作
+                          {t('provider.partner')}
                         </span>
                       )}
                     </div>
@@ -196,7 +198,7 @@ export default function GeminiProviderForm({
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              选择预设可快速填充配置，也可以手动输入自定义配置
+              {t('provider.presetHelp')}
             </p>
           </div>
         </Card>
@@ -207,50 +209,50 @@ export default function GeminiProviderForm({
         <div className="space-y-4">
           <h3 className="text-sm font-medium flex items-center gap-2">
             <Info className="h-4 w-4" />
-            基本信息
+            {t('provider.basicInfo')}
           </h3>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">供应商名称 *</Label>
+              <Label htmlFor="name">{t('provider.providerName')} *</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="例如：PackyCode"
+                placeholder={t('provider.providerNamePlaceholder')}
                 disabled={loading}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">分类</Label>
+              <Label htmlFor="category">{t('provider.category')}</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as ProviderCategory)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="official">官方</SelectItem>
-                  <SelectItem value="third_party">第三方</SelectItem>
-                  <SelectItem value="custom">自定义</SelectItem>
+                  <SelectItem value="official">{t('provider.categoryOfficial')}</SelectItem>
+                  <SelectItem value="third_party">{t('provider.categoryThirdParty')}</SelectItem>
+                  <SelectItem value="custom">{t('provider.categoryCustom')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">描述</Label>
+            <Label htmlFor="description">{t('provider.descriptionLabel')}</Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="例如：PackyCode API 服务"
+              placeholder={t('provider.descriptionPlaceholder')}
               disabled={loading}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="websiteUrl">官网地址</Label>
+            <Label htmlFor="websiteUrl">{t('provider.websiteUrlLabel')}</Label>
             <Input
               id="websiteUrl"
               value={websiteUrl}
@@ -266,12 +268,12 @@ export default function GeminiProviderForm({
           <div className="space-y-4 pt-4 border-t">
             <h3 className="text-sm font-medium flex items-center gap-2">
               <Key className="h-4 w-4" />
-              Gemini 配置
+              {t('provider.geminiConfig')}
             </h3>
 
             {/* API Key */}
             <div className="space-y-2">
-              <Label htmlFor="apiKey">API Key *</Label>
+              <Label htmlFor="apiKey">{t('provider.apiKey')} *</Label>
               <div className="relative">
                 <Input
                   id="apiKey"
@@ -296,13 +298,13 @@ export default function GeminiProviderForm({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                将写入 ~/.gemini/.env 的 GEMINI_API_KEY
+                {t('provider.apiKeyWriteToGemini')}
               </p>
             </div>
 
             {/* Base URL */}
             <div className="space-y-2">
-              <Label htmlFor="baseUrl">API 地址 *</Label>
+              <Label htmlFor="baseUrl">{t('provider.baseUrlLabel')} *</Label>
               <Input
                 id="baseUrl"
                 value={baseUrl}
@@ -311,13 +313,13 @@ export default function GeminiProviderForm({
                 disabled={loading}
               />
               <p className="text-xs text-muted-foreground">
-                将写入 ~/.gemini/.env 的 GOOGLE_GEMINI_BASE_URL
+                {t('provider.baseUrlWriteToGemini')}
               </p>
             </div>
 
             {/* Model Name */}
             <div className="space-y-2">
-              <Label htmlFor="modelName">模型名称</Label>
+              <Label htmlFor="modelName">{t('provider.modelLabel')}</Label>
               <Input
                 id="modelName"
                 value={modelName}
@@ -326,7 +328,7 @@ export default function GeminiProviderForm({
                 disabled={loading}
               />
               <p className="text-xs text-muted-foreground">
-                将写入 ~/.gemini/.env 的 GEMINI_MODEL
+                {t('provider.modelWriteToGemini')}
               </p>
             </div>
           </div>
@@ -339,11 +341,10 @@ export default function GeminiProviderForm({
               <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
               <div className="space-y-1">
                 <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  官方 Google OAuth 认证
+                  {t('provider.googleOAuthTitle')}
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  使用 Google 官方 OAuth 登录，无需配置 API Key。
-                  首次使用时会弹出浏览器进行 Google 账号登录授权。
+                  {t('provider.googleOAuthDescription')}
                 </p>
               </div>
             </div>
@@ -360,7 +361,7 @@ export default function GeminiProviderForm({
           disabled={loading}
         >
           <X className="h-4 w-4 mr-2" aria-hidden="true" />
-          取消
+          {t('buttons.cancel')}
         </Button>
         <Button
           type="submit"
@@ -373,12 +374,12 @@ export default function GeminiProviderForm({
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-              {isEditing ? '更新中...' : '添加中...'}
+              {isEditing ? t('provider.updating') : t('provider.adding')}
             </>
           ) : (
             <>
               <Save className="h-4 w-4 mr-2" aria-hidden="true" />
-              {isEditing ? '更新配置' : '添加配置'}
+              {isEditing ? t('provider.updateConfig') : t('provider.addConfig')}
             </>
           )}
         </Button>

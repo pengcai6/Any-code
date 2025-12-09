@@ -11,6 +11,7 @@ import { ChevronDown, ChevronRight, Wrench, AlertCircle, CheckCircle, Loader2 } 
 import { cn } from '@/lib/utils';
 import { toolRegistry } from '@/lib/toolRegistry';
 import { useToolResults } from '@/hooks/useToolResults';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { ClaudeStreamMessage } from '@/types/claude';
 import type { ToolResultEntry } from '@/contexts/MessagesContext';
 
@@ -49,6 +50,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
   onLinkDetected,
   className,
 }) => {
+  const { t } = useTranslation();
   // 提取工具调用
   const toolCalls = useMemo((): ToolCall[] => {
     if (!message.message?.content || !Array.isArray(message.message.content)) {
@@ -126,7 +128,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
       >
         {isCollapsed ? <ChevronRight className="w-4 h-4 shrink-0" /> : <ChevronDown className="w-4 h-4 shrink-0" />}
         <Wrench className="w-4 h-4 text-blue-500 shrink-0" />
-        <span className="font-medium text-sm">工具调用 ({stats.total})</span>
+        <span className="font-medium text-sm">{t('tools.toolCalls', { count: stats.total })}</span>
 
         {/* 状态徽章 */}
         <div className="flex items-center gap-2 ml-auto">
@@ -187,6 +189,7 @@ interface CollapsedSummaryProps {
 }
 
 const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, getStatusById }) => {
+  const { t } = useTranslation();
   return (
     <div className="px-4 py-3 bg-background/50 border-t border-border space-y-2">
       {/* 显示前3个工具 */}
@@ -218,10 +221,10 @@ const CollapsedSummary: React.FC<CollapsedSummaryProps> = ({ toolCalls, getStatu
       })}
 
       {toolCalls.length > 3 && (
-        <div className="text-xs text-muted-foreground pl-5">还有 {toolCalls.length - 3} 个工具...</div>
+        <div className="text-xs text-muted-foreground pl-5">{t('tools.moreTools', { count: toolCalls.length - 3 })}</div>
       )}
 
-      <div className="text-[10px] text-muted-foreground/70 pt-1">点击展开查看详情</div>
+      <div className="text-[10px] text-muted-foreground/70 pt-1">{t('tools.clickToExpand')}</div>
     </div>
   );
 };
@@ -239,6 +242,7 @@ interface SingleToolCallProps {
 }
 
 const SingleToolCallComponent: React.FC<SingleToolCallProps> = ({ tool, result, status, onLinkDetected, index, total }) => {
+  const { t } = useTranslation();
   const renderer = toolRegistry.getRenderer(tool.name);
 
   const normalizedResult = result
@@ -296,7 +300,7 @@ const SingleToolCallComponent: React.FC<SingleToolCallProps> = ({ tool, result, 
             )}
           </div>
           <span className={cn('text-xs px-2 py-0.5 rounded', statusBg, statusColor)}>
-            {hasResult ? (isError ? '失败' : '成功') : '执行中'}
+            {hasResult ? (isError ? t('tools.failed') : t('tools.success')) : t('tools.executing')}
           </span>
         </div>
       )}
@@ -329,6 +333,7 @@ interface FallbackToolRenderProps {
 }
 
 const FallbackToolRender: React.FC<FallbackToolRenderProps> = ({ tool, result }) => {
+  const { t } = useTranslation();
   const COLLAPSE_HEIGHT = 300;
   const resultRef = useRef<HTMLPreElement>(null);
   const [shouldCollapse, setShouldCollapse] = useState(false);
@@ -347,12 +352,12 @@ const FallbackToolRender: React.FC<FallbackToolRenderProps> = ({ tool, result })
 
   return (
     <div className="fallback-tool-render space-y-2 text-xs">
-      <div className="text-muted-foreground">此工具尚未注册专用渲染器，显示原始数据：</div>
+      <div className="text-muted-foreground">{t('tools.unregisteredTool')}</div>
 
       {tool.input && Object.keys(tool.input).length > 0 && (
         <details className="text-xs">
           <summary className="cursor-pointer text-muted-foreground hover:text-foreground select-none">
-            输入参数
+            {t('tools.inputParams')}
           </summary>
           <pre className="mt-1 p-2 bg-muted rounded text-[10px] overflow-x-auto whitespace-pre-wrap">
             {JSON.stringify(tool.input, null, 2)}
@@ -362,7 +367,7 @@ const FallbackToolRender: React.FC<FallbackToolRenderProps> = ({ tool, result })
 
       {result && (
         <div className={cn('p-2 rounded relative', result.is_error ? 'bg-red-500/10' : 'bg-muted')}>
-          <div className="font-medium mb-1 text-xs">{result.is_error ? '执行失败' : '执行结果'}:</div>
+          <div className="font-medium mb-1 text-xs">{result.is_error ? t('tools.executionFailed') : t('tools.executionResult')}:</div>
           <div className="relative">
             <pre
               ref={resultRef}
@@ -383,7 +388,7 @@ const FallbackToolRender: React.FC<FallbackToolRenderProps> = ({ tool, result })
               onClick={toggle}
               className="mt-2 text-[11px] text-primary underline underline-offset-2"
             >
-              {collapsed ? '展开全部' : '收起内容'}
+              {collapsed ? t('tools.expandAll') : t('tools.collapseContent')}
             </button>
           )}
         </div>

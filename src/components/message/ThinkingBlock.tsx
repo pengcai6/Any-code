@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { BrainCircuit, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ThinkingBlockProps {
   /** 思考内容 */
@@ -29,6 +30,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
   autoCollapseDelay = 2500,
   typewriterSpeed = 5 // 思考内容通常较长，稍快一些
 }) => {
+  const { t } = useTranslation();
   // 展开/收起状态 - 默认展开
   const [isOpen, setIsOpen] = useState(true);
 
@@ -171,7 +173,7 @@ export const ThinkingBlock: React.FC<ThinkingBlockProps> = ({
         <div
           className="px-3 pb-3 pt-1"
           onDoubleClick={handleDoubleClick}
-          title={isTyping ? "双击跳过打字效果" : undefined}
+          title={isTyping ? t('thinking.doubleClickSkip') : undefined}
         >
           <div className="text-xs text-muted-foreground/80 whitespace-pre-wrap font-mono leading-relaxed max-h-[400px] overflow-y-auto">
             {renderContent()}

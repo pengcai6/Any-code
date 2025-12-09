@@ -23,12 +23,14 @@ import {
 import { api, type ProviderConfig, type CurrentProviderConfig, type ApiKeyUsage } from '@/lib/api';
 import { Toast } from '@/components/ui/toast';
 import ProviderForm from './ProviderForm';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ProviderManagerProps {
   onBack: () => void;
 }
 
 export default function ProviderManager({ onBack }: ProviderManagerProps) {
+  const { t } = useTranslation();
   const [presets, setPresets] = useState<ProviderConfig[]>([]);
   const [currentConfig, setCurrentConfig] = useState<CurrentProviderConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,7 +70,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       setCurrentConfig(configData);
     } catch (error) {
       console.error('Failed to load provider data:', error);
-      setToastMessage({ message: '加载代理商配置失败', type: 'error' });
+      setToastMessage({ message: t('provider.loadConfigFailed'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -82,7 +84,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       await loadData(); // Refresh current config
     } catch (error) {
       console.error('Failed to switch provider:', error);
-      setToastMessage({ message: '切换代理商失败', type: 'error' });
+      setToastMessage({ message: t('provider.switchFailed'), type: 'error' });
     } finally {
       setSwitching(null);
     }
@@ -96,7 +98,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       await loadData(); // Refresh current config
     } catch (error) {
       console.error('Failed to clear provider:', error);
-      setToastMessage({ message: '清理配置失败', type: 'error' });
+      setToastMessage({ message: t('provider.clearConfigFailed'), type: 'error' });
     } finally {
       setSwitching(null);
     }
@@ -109,7 +111,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       setToastMessage({ message, type: 'success' });
     } catch (error) {
       console.error('Failed to test connection:', error);
-      setToastMessage({ message: '连接测试失败', type: 'error' });
+      setToastMessage({ message: t('provider.connectionTestFailed'), type: 'error' });
     } finally {
       setTesting(null);
     }
@@ -119,7 +121,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
     // 需要 API Key 才能查询用量
     const apiKey = config.api_key || config.auth_token;
     if (!apiKey) {
-      setToastMessage({ message: '该代理商未配置 API Key 或认证 Token，无法查询用量', type: 'error' });
+      setToastMessage({ message: t('provider.noApiKeyForUsage'), type: 'error' });
       return;
     }
 
@@ -135,7 +137,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       }
     } catch (error) {
       console.error('Failed to query usage:', error);
-      setToastMessage({ message: `查询用量失败: ${error}`, type: 'error' });
+      setToastMessage({ message: t('provider.queryUsageFailed', { error: String(error) }), type: 'error' });
     } finally {
       setQueryingUsage(null);
     }
@@ -146,7 +148,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
   };
 
   const formatDate = (timestamp: number): string => {
-    if (timestamp === 0) return '永不过期';
+    if (timestamp === 0) return t('provider.neverExpires');
     return new Date(timestamp * 1000).toLocaleString('zh-CN');
   };
 
@@ -167,17 +169,17 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
 
   const confirmDeleteProvider = async () => {
     if (!providerToDelete) return;
-    
+
     try {
       setDeleting(providerToDelete.id);
       await api.deleteProviderConfig(providerToDelete.id);
-      setToastMessage({ message: '代理商删除成功', type: 'success' });
+      setToastMessage({ message: t('provider.deleteSuccess'), type: 'success' });
       await loadData();
       setDeleteDialogOpen(false);
       setProviderToDelete(null);
     } catch (error) {
       console.error('Failed to delete provider:', error);
-      setToastMessage({ message: '删除代理商失败', type: 'error' });
+      setToastMessage({ message: t('provider.deleteFailed'), type: 'error' });
     } finally {
       setDeleting(null);
     }
@@ -193,29 +195,29 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       if (editingProvider) {
         const updatedConfig = { ...formData, id: editingProvider.id };
         await api.updateProviderConfig(updatedConfig);
-        
+
         // 如果编辑的是当前活跃的代理商，同步更新配置文件
         if (isCurrentProvider(editingProvider)) {
           try {
             await api.switchProviderConfig(updatedConfig);
-            setToastMessage({ message: '代理商更新成功，配置文件已同步更新', type: 'success' });
+            setToastMessage({ message: t('provider.updateSyncSuccess'), type: 'success' });
           } catch (switchError) {
             console.error('Failed to sync provider config:', switchError);
-            setToastMessage({ message: '代理商更新成功，但配置文件同步失败', type: 'error' });
+            setToastMessage({ message: t('provider.updateSyncFailed'), type: 'error' });
           }
         } else {
-          setToastMessage({ message: '代理商更新成功', type: 'success' });
+          setToastMessage({ message: t('provider.updateSuccess'), type: 'success' });
         }
       } else {
         await api.addProviderConfig(formData);
-        setToastMessage({ message: '代理商添加成功', type: 'success' });
+        setToastMessage({ message: t('provider.addSuccess'), type: 'success' });
       }
       setShowForm(false);
       setEditingProvider(null);
       await loadData();
     } catch (error) {
       console.error('Failed to save provider:', error);
-      setToastMessage({ message: editingProvider ? '更新代理商失败' : '添加代理商失败', type: 'error' });
+      setToastMessage({ message: editingProvider ? t('provider.updateFailed') : t('provider.addFailed'), type: 'error' });
     }
   };
 
@@ -241,7 +243,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">正在加载代理商配置...</p>
+          <p className="text-sm text-muted-foreground">{t('provider.loadingConfig')}</p>
         </div>
       </div>
     );
@@ -252,13 +254,13 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label="返回设置">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label={t('provider.backToSettings')}>
             <Settings2 className="h-4 w-4" aria-hidden="true" />
           </Button>
           <div>
-            <h1 className="text-lg font-semibold">代理商管理</h1>
+            <h1 className="text-lg font-semibold">{t('provider.providerManager')}</h1>
             <p className="text-xs text-muted-foreground">
-              一键切换不同的 Claude API 代理商
+              {t('provider.switchProvider')}
             </p>
           </div>
         </div>
@@ -271,7 +273,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
             className="text-xs"
           >
             <Plus className="h-3 w-3 mr-1" aria-hidden="true" />
-            添加代理商
+            {t('provider.addProvider')}
           </Button>
           <Button
             variant="outline"
@@ -280,7 +282,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
             className="text-xs"
           >
             <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
-            查看当前配置
+            {t('provider.viewCurrentConfig')}
           </Button>
           <Button
             variant="destructive"
@@ -294,7 +296,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
             ) : (
               <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" />
             )}
-            清理配置
+            {t('provider.clearConfig')}
           </Button>
         </div>
       </div>
@@ -306,10 +308,10 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground mb-4">还没有配置任何代理商</p>
+                <p className="text-sm text-muted-foreground mb-4">{t('provider.noProvidersConfigured')}</p>
                 <Button onClick={handleAddProvider} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  添加第一个代理商
+                  {t('provider.addFirstProvider')}
                 </Button>
               </div>
             </div>
@@ -326,29 +328,29 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     {isCurrentProvider(config) && (
                       <Badge variant="secondary" className="text-xs">
                         <Check className="h-3 w-3 mr-1" />
-                        当前使用
+                        {t('provider.currentUsing')}
                       </Badge>
                     )}
                   </div>
-                  
+
                   <div className="space-y-1 text-sm text-muted-foreground">
-                    <p className="truncate"><span className="font-medium">描述：</span>{config.description}</p>
-                    <p className="truncate"><span className="font-medium">API地址：</span>{config.base_url}</p>
+                    <p className="truncate"><span className="font-medium">{t('provider.description')}</span>{config.description}</p>
+                    <p className="truncate"><span className="font-medium">{t('provider.apiUrl')}</span>{config.base_url}</p>
                     {config.auth_token && (
-                      <p className="truncate"><span className="font-medium">认证Token：</span>
+                      <p className="truncate"><span className="font-medium">{t('provider.authToken')}</span>
                         {showTokens ? config.auth_token : maskToken(config.auth_token)}
                       </p>
                     )}
                     {config.api_key && (
-                      <p className="truncate"><span className="font-medium">API Key：</span>
+                      <p className="truncate"><span className="font-medium">{t('provider.apiKey')}</span>
                         {showTokens ? config.api_key : maskToken(config.api_key)}
                       </p>
                     )}
                     {config.model && (
-                      <p className="truncate"><span className="font-medium">模型：</span>{config.model}</p>
+                      <p className="truncate"><span className="font-medium">{t('provider.model')}</span>{config.model}</p>
                     )}
                     {config.api_key_helper && (
-                      <p className="truncate"><span className="font-medium">Key Helper：</span>
+                      <p className="truncate"><span className="font-medium">{t('provider.keyHelper')}</span>
                         <code className="text-xs bg-muted px-1 py-0.5 rounded ml-1">
                           {config.api_key_helper.length > 50 ?
                             config.api_key_helper.substring(0, 47) + '...' :
@@ -364,16 +366,16 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                   {usageCache[config.id] && (
                     <div className="text-right text-xs space-y-0.5 border-r pr-3 mr-1">
                       <div className="text-muted-foreground">
-                        已用: <span className="font-medium text-foreground">{formatCurrency(usageCache[config.id].used_balance)}</span>
+                        {t('provider.used')} <span className="font-medium text-foreground">{formatCurrency(usageCache[config.id].used_balance)}</span>
                       </div>
                       <div className="text-muted-foreground">
                         {usageCache[config.id].is_unlimited ? (
                           <span className="text-green-600 font-medium flex items-center justify-end gap-1">
-                            剩余: <Infinity className="h-3 w-3" /> 无限
+                            {t('provider.remaining')} <Infinity className="h-3 w-3" /> {t('provider.unlimited')}
                           </span>
                         ) : (
                           <>
-                            剩余: <span className={`font-medium ${usageCache[config.id].remaining_balance > 10 ? 'text-green-600' : 'text-red-600'}`}>
+                            {t('provider.remaining')} <span className={`font-medium ${usageCache[config.id].remaining_balance > 10 ? 'text-green-600' : 'text-red-600'}`}>
                               {formatCurrency(usageCache[config.id].remaining_balance)}
                             </span>
                           </>
@@ -389,8 +391,8 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     onClick={() => queryUsage(config)}
                     disabled={queryingUsage === config.id}
                     className="text-xs"
-                    aria-label="查询用量"
-                    title="查询 API Key 用量"
+                    aria-label={t('provider.usageQuery')}
+                    title={t('provider.usageQuery')}
                   >
                     {queryingUsage === config.id ? (
                       <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -405,7 +407,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     onClick={() => testConnection(config)}
                     disabled={testing === config.id}
                     className="text-xs"
-                    aria-label="测试连接"
+                    aria-label={t('tooltips.testConnection')}
                   >
                     {testing === config.id ? (
                       <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -419,7 +421,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     size="sm"
                     onClick={() => handleEditProvider(config)}
                     className="text-xs"
-                    aria-label="编辑代理商"
+                    aria-label={t('provider.editProvider')}
                   >
                     <Edit className="h-3 w-3" aria-hidden="true" />
                   </Button>
@@ -430,7 +432,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     onClick={() => handleDeleteProvider(config)}
                     disabled={deleting === config.id}
                     className="text-xs text-red-600 hover:text-red-700"
-                    aria-label="删除代理商"
+                    aria-label={t('dialogs.confirmDelete')}
                   >
                     {deleting === config.id ? (
                       <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -450,7 +452,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     ) : (
                       <Check className="h-3 w-3 mr-1" aria-hidden="true" />
                     )}
-                    {isCurrentProvider(config) ? '已选择' : '切换到此配置'}
+                    {isCurrentProvider(config) ? t('provider.alreadySelected') : t('provider.switchToConfig')}
                   </Button>
                   </div>
                 </div>
@@ -473,7 +475,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
               ) : (
                 <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
               )}
-              {showTokens ? '隐藏' : '显示'}Token
+              {showTokens ? t('provider.hideToken') : t('provider.showToken')}Token
             </Button>
           </div>
           )}
@@ -484,7 +486,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       <Dialog open={showCurrentConfig} onOpenChange={setShowCurrentConfig}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>当前环境变量配置</DialogTitle>
+            <DialogTitle>{t('provider.currentEnvConfig')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {currentConfig ? (
@@ -521,7 +523,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     </p>
                   </div>
                 )}
-                
+
                 {currentConfig.anthropic_api_key_helper && (
                   <div>
                     <p className="font-medium text-sm">apiKeyHelper</p>
@@ -529,11 +531,11 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                       {currentConfig.anthropic_api_key_helper}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      这是一个命令，用于动态生成认证令牌
+                      {t('provider.tokenHelper')}
                     </p>
                   </div>
                 )}
-                
+
                 {/* Show/hide tokens toggle in dialog */}
                 <div className="flex justify-center pt-2">
                   <Button
@@ -547,7 +549,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     ) : (
                       <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
                     )}
-                    {showTokens ? '隐藏' : '显示'}Token
+                    {showTokens ? t('provider.hideToken') : t('provider.showToken')}Token
                   </Button>
                 </div>
               </div>
@@ -555,7 +557,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">未检测到任何 ANTHROPIC 环境变量</p>
+                  <p className="text-sm text-muted-foreground">{t('provider.noEnvVars')}</p>
                 </div>
               </div>
             )}
@@ -567,7 +569,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       <Dialog open={showForm} onOpenChange={handleFormCancel}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProvider ? '编辑代理商' : '添加代理商'}</DialogTitle>
+            <DialogTitle>{editingProvider ? t('provider.editProvider') : t('provider.addProvider')}</DialogTitle>
           </DialogHeader>
           <ProviderForm
             initialData={editingProvider || undefined}
@@ -583,24 +585,24 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
-              API Key 用量查询
+              {t('provider.usageQuery')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {usageProvider && (
               <div className="text-sm text-muted-foreground mb-4">
-                代理商: <span className="font-medium text-foreground">{usageProvider.name}</span>
+                {t('provider.providerLabel')} <span className="font-medium text-foreground">{usageProvider.name}</span>
               </div>
             )}
             {usageData && (
               <div className="space-y-3">
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="text-sm text-muted-foreground">令牌总额</span>
+                  <span className="text-sm text-muted-foreground">{t('provider.totalBalance')}</span>
                   <span className={`font-semibold ${usageData.is_unlimited ? 'text-green-600' : ''}`}>
                     {usageData.is_unlimited ? (
                       <span className="flex items-center gap-1">
                         <Infinity className="h-4 w-4" />
-                        无限
+                        {t('provider.unlimited')}
                       </span>
                     ) : (
                       formatCurrency(usageData.total_balance)
@@ -609,14 +611,14 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="text-sm text-muted-foreground">已用额度</span>
+                  <span className="text-sm text-muted-foreground">{t('provider.usedBalance')}</span>
                   <span className="font-semibold">
                     {formatCurrency(usageData.used_balance)}
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                  <span className="text-sm text-muted-foreground">剩余额度</span>
+                  <span className="text-sm text-muted-foreground">{t('provider.remainingBalance')}</span>
                   <span className={`font-semibold ${
                     usageData.is_unlimited
                       ? 'text-green-600'
@@ -627,7 +629,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                     {usageData.is_unlimited ? (
                       <span className="flex items-center gap-1">
                         <Infinity className="h-4 w-4" />
-                        无限制
+                        {t('provider.noLimit')}
                       </span>
                     ) : (
                       formatCurrency(usageData.remaining_balance)
@@ -638,7 +640,7 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                 <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    有效期
+                    {t('provider.validUntil')}
                   </span>
                   <span className="font-semibold">
                     {formatDate(usageData.access_until)}
@@ -646,14 +648,14 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
                 </div>
 
                 <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                  查询时间段: {usageData.query_start_date} 至 {usageData.query_end_date}
+                  {t('provider.queryPeriod', { start: usageData.query_start_date, end: usageData.query_end_date })}
                 </div>
               </div>
             )}
           </div>
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setUsageDialogOpen(false)}>
-              关闭
+              {t('buttons.close')}
             </Button>
           </div>
         </DialogContent>
@@ -663,19 +665,19 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>确认删除代理商</DialogTitle>
+            <DialogTitle>{t('provider.confirmDeleteProvider')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p>您确定要删除代理商 "{providerToDelete?.name}" 吗？</p>
+            <p>{t('provider.confirmDeleteMessage', { name: providerToDelete?.name })}</p>
             {providerToDelete && (
               <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm"><span className="font-medium">名称：</span>{providerToDelete.name}</p>
-                <p className="text-sm"><span className="font-medium">描述：</span>{providerToDelete.description}</p>
-                <p className="text-sm"><span className="font-medium">API地址：</span>{providerToDelete.base_url}</p>
+                <p className="text-sm"><span className="font-medium">{t('provider.name')}</span>{providerToDelete.name}</p>
+                <p className="text-sm"><span className="font-medium">{t('provider.description')}</span>{providerToDelete.description}</p>
+                <p className="text-sm"><span className="font-medium">{t('provider.apiUrl')}</span>{providerToDelete.base_url}</p>
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              此操作无法撤销，代理商配置将被永久删除。
+              {t('provider.deleteCannotUndo')}
             </p>
           </div>
           <div className="flex justify-end gap-2">
@@ -684,14 +686,14 @@ export default function ProviderManager({ onBack }: ProviderManagerProps) {
               onClick={cancelDeleteProvider}
               disabled={deleting === providerToDelete?.id}
             >
-              取消
+              {t('buttons.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDeleteProvider}
               disabled={deleting === providerToDelete?.id}
             >
-              {deleting === providerToDelete?.id ? '删除中...' : '确认删除'}
+              {deleting === providerToDelete?.id ? t('provider.deleting') : t('buttons.confirm')}
             </Button>
           </div>
         </DialogContent>

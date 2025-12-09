@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { useTranslation } from "@/hooks/useTranslation";
 
 /**
  * 图片数据结构（从消息内容中提取）
@@ -44,6 +45,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
   onClose,
   onNavigate,
 }) => {
+  const { t } = useTranslation();
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -169,7 +171,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
             setScale((s) => Math.max(s - 0.25, 0.5));
           }}
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white transition-colors"
-          title="缩小 (-)"
+          title={t('imagePreview.zoomOut')}
         >
           <ZoomOut className="h-4 w-4" />
         </button>
@@ -182,7 +184,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
             setScale((s) => Math.min(s + 0.25, 5));
           }}
           className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 text-white transition-colors"
-          title="放大 (+)"
+          title={t('imagePreview.zoomIn')}
         >
           <ZoomIn className="h-4 w-4" />
         </button>
@@ -197,7 +199,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
       <button
         onClick={onClose}
         className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors"
-        title="关闭 (ESC)"
+        title={t('imagePreview.close')}
       >
         <X className="h-5 w-5" />
       </button>
@@ -218,7 +220,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
       >
         <img
           src={getImageSrc(currentImage)}
-          alt={`图片 ${currentIndex + 1}`}
+          alt={t('imagePreview.image', { index: currentIndex + 1 })}
           className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl select-none"
           style={{
             transform: `scale(${scale}) translate(${position.x / scale}px, ${position.y / scale}px)`,
@@ -237,7 +239,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
               onNavigate((currentIndex - 1 + images.length) % images.length);
             }}
             className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors"
-            title="上一张 (←)"
+            title={t('imagePreview.prevImage')}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -247,7 +249,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
               onNavigate((currentIndex + 1) % images.length);
             }}
             className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/10 hover:bg-white/20 text-white rounded-full flex items-center justify-center transition-colors"
-            title="下一张 (→)"
+            title={t('imagePreview.nextImage')}
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -273,7 +275,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
             >
               <img
                 src={getImageSrc(image)}
-                alt={`缩略图 ${index + 1}`}
+                alt={t('imagePreview.thumbnail', { index: index + 1 })}
                 className="w-full h-full object-cover"
               />
             </button>
@@ -295,6 +297,7 @@ export const MessageImagePreview: React.FC<MessageImagePreviewProps> = ({
   thumbnailSize = 150,
   compact = false,
 }) => {
+  const { t } = useTranslation();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
 
@@ -344,12 +347,12 @@ export const MessageImagePreview: React.FC<MessageImagePreviewProps> = ({
               >
                 {imageErrors.has(index) ? (
                   <div className="w-full h-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">错误</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('imagePreview.error')}</span>
                   </div>
                 ) : (
                   <img
                     src={getImageSrc(image)}
-                    alt={`图片 ${index + 1}`}
+                    alt={t('imagePreview.image', { index: index + 1 })}
                     className="w-full h-full object-cover"
                     onError={() => handleImageError(index)}
                     loading="lazy"
@@ -365,7 +368,7 @@ export const MessageImagePreview: React.FC<MessageImagePreviewProps> = ({
           {/* 图片数量提示 */}
           {images.length > 1 && (
             <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-0.5">
-              {images.length}张
+              {t('imagePreview.imageCount', { count: images.length })}
             </span>
           )}
         </div>
@@ -404,12 +407,12 @@ export const MessageImagePreview: React.FC<MessageImagePreviewProps> = ({
                 >
                   {imageErrors.has(index) ? (
                     <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <span className="text-xs text-muted-foreground">加载失败</span>
+                      <span className="text-xs text-muted-foreground">{t('imagePreview.loadFailed')}</span>
                     </div>
                   ) : (
                     <img
                       src={getImageSrc(image)}
-                      alt={`图片 ${index + 1}`}
+                      alt={t('imagePreview.image', { index: index + 1 })}
                       className="w-full h-full object-cover"
                       onError={() => handleImageError(index)}
                       loading="lazy"

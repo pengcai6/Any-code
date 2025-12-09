@@ -29,12 +29,14 @@ import {
   extractModelFromConfig,
   getCategoryDisplayName,
 } from '@/config/codexProviderPresets';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface CodexProviderManagerProps {
   onBack?: () => void;
 }
 
 export default function CodexProviderManager({ onBack }: CodexProviderManagerProps) {
+  const { t } = useTranslation();
   const [presets, setPresets] = useState<CodexProviderConfig[]>([]);
   const [currentConfig, setCurrentConfig] = useState<CurrentCodexConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       setCurrentConfig(config);
     } catch (error) {
       console.error('Failed to load Codex provider data:', error);
-      setToastMessage({ message: '加载 Codex 代理商配置失败', type: 'error' });
+      setToastMessage({ message: t('provider.loadCodexConfigFailed'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -109,7 +111,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       await loadData();
     } catch (error) {
       console.error('Failed to switch Codex provider:', error);
-      setToastMessage({ message: '切换 Codex 代理商失败', type: 'error' });
+      setToastMessage({ message: t('provider.switchCodexFailed'), type: 'error' });
     } finally {
       setSwitching(null);
     }
@@ -123,7 +125,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       await loadData();
     } catch (error) {
       console.error('Failed to clear Codex provider:', error);
-      setToastMessage({ message: '清理 Codex 配置失败', type: 'error' });
+      setToastMessage({ message: t('provider.clearCodexConfigFailed'), type: 'error' });
     } finally {
       setSwitching(null);
     }
@@ -138,7 +140,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       setToastMessage({ message, type: 'success' });
     } catch (error) {
       console.error('Failed to test Codex connection:', error);
-      setToastMessage({ message: '连接测试失败', type: 'error' });
+      setToastMessage({ message: t('provider.connectionTestFailed'), type: 'error' });
     } finally {
       setTesting(null);
     }
@@ -165,13 +167,13 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
     try {
       setDeleting(providerToDelete.id);
       await api.deleteCodexProviderConfig(providerToDelete.id);
-      setToastMessage({ message: 'Codex 代理商删除成功', type: 'success' });
+      setToastMessage({ message: t('provider.codexDeleteSuccess'), type: 'success' });
       await loadData();
       setDeleteDialogOpen(false);
       setProviderToDelete(null);
     } catch (error) {
       console.error('Failed to delete Codex provider:', error);
-      setToastMessage({ message: '删除 Codex 代理商失败', type: 'error' });
+      setToastMessage({ message: t('provider.codexDeleteFailed'), type: 'error' });
     } finally {
       setDeleting(null);
     }
@@ -192,24 +194,24 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
         if (isCurrentProvider(editingProvider)) {
           try {
             await api.switchCodexProvider(updatedConfig);
-            setToastMessage({ message: 'Codex 代理商更新成功，配置文件已同步更新', type: 'success' });
+            setToastMessage({ message: t('provider.codexUpdateSyncSuccess'), type: 'success' });
           } catch (switchError) {
             console.error('Failed to sync Codex provider config:', switchError);
-            setToastMessage({ message: 'Codex 代理商更新成功，但配置文件同步失败', type: 'error' });
+            setToastMessage({ message: t('provider.codexUpdateSyncFailed'), type: 'error' });
           }
         } else {
-          setToastMessage({ message: 'Codex 代理商更新成功', type: 'success' });
+          setToastMessage({ message: t('provider.codexUpdateSuccess'), type: 'success' });
         }
       } else {
         await api.addCodexProviderConfig(formData);
-        setToastMessage({ message: 'Codex 代理商添加成功', type: 'success' });
+        setToastMessage({ message: t('provider.codexAddSuccess'), type: 'success' });
       }
       setShowForm(false);
       setEditingProvider(null);
       await loadData();
     } catch (error) {
       console.error('Failed to save Codex provider:', error);
-      setToastMessage({ message: editingProvider ? '更新 Codex 代理商失败' : '添加 Codex 代理商失败', type: 'error' });
+      setToastMessage({ message: editingProvider ? t('provider.codexUpdateFailed') : t('provider.codexAddFailed'), type: 'error' });
     }
   };
 
@@ -248,7 +250,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">正在加载 Codex 代理商配置...</p>
+          <p className="text-sm text-muted-foreground">{t('provider.loadingCodexConfig')}</p>
         </div>
       </div>
     );
@@ -260,17 +262,17 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
           {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label="返回设置">
+            <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label={t('provider.backToSettings')}>
               <Settings2 className="h-4 w-4" aria-hidden="true" />
             </Button>
           )}
           <div>
             <h1 className="text-lg font-semibold flex items-center gap-2">
               <FileCode className="h-5 w-5" />
-              Codex 代理商管理
+              {t('provider.codexProviderManager')}
             </h1>
             <p className="text-xs text-muted-foreground">
-              一键切换不同的 OpenAI Codex API 代理商
+              {t('provider.switchCodexProvider')}
             </p>
           </div>
         </div>
@@ -283,7 +285,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
             className="text-xs"
           >
             <Plus className="h-3 w-3 mr-1" aria-hidden="true" />
-            添加代理商
+            {t('provider.addProvider')}
           </Button>
           <Button
             variant="outline"
@@ -292,7 +294,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
             className="text-xs"
           >
             <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
-            查看当前配置
+            {t('provider.viewCurrentConfig')}
           </Button>
           <Button
             variant="destructive"
@@ -306,7 +308,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
             ) : (
               <Trash2 className="h-3 w-3 mr-1" aria-hidden="true" />
             )}
-            清理配置
+            {t('provider.clearConfig')}
           </Button>
         </div>
       </div>
@@ -318,10 +320,10 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground mb-4">还没有配置任何 Codex 代理商</p>
+                <p className="text-sm text-muted-foreground mb-4">{t('provider.noCodexProviders')}</p>
                 <Button onClick={handleAddProvider} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
-                  添加第一个代理商
+                  {t('provider.addFirstProvider')}
                 </Button>
               </div>
             </div>
@@ -338,17 +340,17 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                       {isCurrentProvider(config) && (
                         <Badge variant="secondary" className="text-xs">
                           <Check className="h-3 w-3 mr-1" />
-                          当前使用
+                          {t('provider.currentUsing')}
                         </Badge>
                       )}
                       {config.isOfficial && (
                         <Badge variant="outline" className="text-xs bg-blue-50 dark:bg-blue-950">
-                          官方
+                          {t('provider.official')}
                         </Badge>
                       )}
                       {config.isPartner && (
                         <Badge variant="outline" className="text-xs bg-green-50 dark:bg-green-950">
-                          合作
+                          {t('provider.partner')}
                         </Badge>
                       )}
                       {config.category && (
@@ -360,11 +362,11 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
 
                     <div className="space-y-1 text-sm text-muted-foreground">
                       {config.description && (
-                        <p><span className="font-medium">描述：</span>{config.description}</p>
+                        <p><span className="font-medium">{t('provider.description')}</span>{config.description}</p>
                       )}
                       {config.websiteUrl && (
                         <p className="flex items-center gap-1">
-                          <span className="font-medium">官网：</span>
+                          <span className="font-medium">{t('provider.website')}</span>
                           <a
                             href={config.websiteUrl}
                             target="_blank"
@@ -379,15 +381,15 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                       {!config.isOfficial && (
                         <>
                           {extractApiKeyFromAuth(config.auth) && (
-                            <p><span className="font-medium">API Key：</span>
+                            <p><span className="font-medium">{t('provider.apiKey')}</span>
                               {showTokens ? extractApiKeyFromAuth(config.auth) : maskToken(extractApiKeyFromAuth(config.auth))}
                             </p>
                           )}
                           {extractBaseUrlFromConfig(config.config) && (
-                            <p><span className="font-medium">API地址：</span>{extractBaseUrlFromConfig(config.config)}</p>
+                            <p><span className="font-medium">{t('provider.apiUrl')}</span>{extractBaseUrlFromConfig(config.config)}</p>
                           )}
                           {extractModelFromConfig(config.config) && (
-                            <p><span className="font-medium">模型：</span>{extractModelFromConfig(config.config)}</p>
+                            <p><span className="font-medium">{t('provider.model')}</span>{extractModelFromConfig(config.config)}</p>
                           )}
                         </>
                       )}
@@ -402,7 +404,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                         onClick={() => testConnection(config)}
                         disabled={testing === config.id}
                         className="text-xs"
-                        aria-label="测试连接"
+                        aria-label={t('tooltips.testConnection')}
                       >
                         {testing === config.id ? (
                           <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -419,7 +421,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                           size="sm"
                           onClick={() => handleEditProvider(config)}
                           className="text-xs"
-                          aria-label="编辑代理商"
+                          aria-label={t('provider.editProvider')}
                         >
                           <Edit className="h-3 w-3" aria-hidden="true" />
                         </Button>
@@ -430,7 +432,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                           onClick={() => handleDeleteProvider(config)}
                           disabled={deleting === config.id}
                           className="text-xs text-red-600 hover:text-red-700"
-                          aria-label="删除代理商"
+                          aria-label={t('dialogs.confirmDelete')}
                         >
                           {deleting === config.id ? (
                             <RefreshCw className="h-3 w-3 animate-spin" aria-hidden="true" />
@@ -452,7 +454,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                       ) : (
                         <Check className="h-3 w-3 mr-1" aria-hidden="true" />
                       )}
-                      {isCurrentProvider(config) ? '已选择' : '切换到此配置'}
+                      {isCurrentProvider(config) ? t('provider.alreadySelected') : t('provider.switchToConfig')}
                     </Button>
                   </div>
                 </div>
@@ -474,7 +476,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                 ) : (
                   <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
                 )}
-                {showTokens ? '隐藏' : '显示'} API Key
+                {showTokens ? t('provider.hideApiKey') : t('provider.showApiKey')}
               </Button>
             </div>
           )}
@@ -485,7 +487,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       <Dialog open={showCurrentConfig} onOpenChange={setShowCurrentConfig}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>当前 Codex 配置</DialogTitle>
+            <DialogTitle>{t('provider.currentCodexConfig')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {currentConfig ? (
@@ -546,7 +548,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
                     ) : (
                       <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
                     )}
-                    {showTokens ? '隐藏' : '显示'} API Key
+                    {showTokens ? t('provider.hideApiKey') : t('provider.showApiKey')}
                   </Button>
                 </div>
               </div>
@@ -554,9 +556,9 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
               <div className="flex items-center justify-center py-8">
                 <div className="text-center">
                   <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">未检测到 Codex 配置文件</p>
+                  <p className="text-sm text-muted-foreground">{t('provider.noCodexConfig')}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    请选择一个代理商进行配置，或使用官方默认配置
+                    {t('provider.selectProviderOrOfficial')}
                   </p>
                 </div>
               </div>
@@ -569,7 +571,7 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       <Dialog open={showForm} onOpenChange={handleFormCancel}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProvider ? '编辑 Codex 代理商' : '添加 Codex 代理商'}</DialogTitle>
+            <DialogTitle>{editingProvider ? t('provider.editCodexProvider') : t('provider.addCodexProvider')}</DialogTitle>
           </DialogHeader>
           <CodexProviderForm
             initialData={editingProvider || undefined}
@@ -583,20 +585,20 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>确认删除 Codex 代理商</DialogTitle>
+            <DialogTitle>{t('provider.confirmDeleteCodexProvider')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p>您确定要删除 Codex 代理商 "{providerToDelete?.name}" 吗？</p>
+            <p>{t('provider.confirmDeleteCodexMessage', { name: providerToDelete?.name })}</p>
             {providerToDelete && (
               <div className="p-3 bg-muted rounded-md">
-                <p className="text-sm"><span className="font-medium">名称：</span>{providerToDelete.name}</p>
+                <p className="text-sm"><span className="font-medium">{t('provider.name')}</span>{providerToDelete.name}</p>
                 {providerToDelete.description && (
-                  <p className="text-sm"><span className="font-medium">描述：</span>{providerToDelete.description}</p>
+                  <p className="text-sm"><span className="font-medium">{t('provider.description')}</span>{providerToDelete.description}</p>
                 )}
               </div>
             )}
             <p className="text-sm text-muted-foreground">
-              此操作无法撤销，代理商配置将被永久删除。
+              {t('provider.deleteCannotUndo')}
             </p>
           </div>
           <div className="flex justify-end gap-2">
@@ -605,14 +607,14 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
               onClick={cancelDeleteProvider}
               disabled={deleting === providerToDelete?.id}
             >
-              取消
+              {t('buttons.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDeleteProvider}
               disabled={deleting === providerToDelete?.id}
             >
-              {deleting === providerToDelete?.id ? '删除中...' : '确认删除'}
+              {deleting === providerToDelete?.id ? t('provider.deleting') : t('buttons.confirm')}
             </Button>
           </div>
         </DialogContent>

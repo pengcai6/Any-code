@@ -13,26 +13,23 @@ import { AIMessage } from "./AIMessage";
 import { UserMessage } from "./UserMessage";
 import type { SubagentGroup } from "@/lib/subagentGrouping";
 import { getSubagentMessageRole } from "@/lib/subagentGrouping";
-
-/**
- * 子代理类型显示名称映射
- */
-const SUBAGENT_TYPE_LABELS: Record<string, string> = {
-  'general-purpose': '通用代理',
-  'Explore': '探索代理',
-  'Plan': '规划代理',
-  'statusline-setup': '状态栏配置代理',
-  'code-reviewer': '代码审查代理',
-  'analyst': '分析代理',
-  'executor': '执行代理',
-};
+import { useTranslation } from "@/hooks/useTranslation";
 
 /**
  * 获取子代理类型的显示名称
  */
-function getSubagentTypeLabel(type?: string): string {
-  if (!type) return '子代理';
-  return SUBAGENT_TYPE_LABELS[type] || type;
+function getSubagentTypeLabel(type?: string, t?: (key: string) => string): string {
+  if (!type || !t) return t ? t('subagent.subagent') : '子代理';
+  const labelMap: Record<string, string> = {
+    'general-purpose': t('subagent.generalPurpose'),
+    'Explore': t('subagent.explore'),
+    'Plan': t('subagent.plan'),
+    'statusline-setup': t('subagent.statuslineSetup'),
+    'code-reviewer': t('subagent.codeReviewer'),
+    'analyst': t('subagent.analyst'),
+    'executor': t('subagent.executor'),
+  };
+  return labelMap[type] || type;
 }
 
 interface SubagentMessageGroupProps {
@@ -55,6 +52,7 @@ export const SubagentMessageGroup: React.FC<SubagentMessageGroupProps> = ({
   className,
   onLinkDetected,
 }) => {
+  const { t } = useTranslation();
   // 🔄 默认折叠子代理执行过程，减少视觉干扰
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -97,17 +95,17 @@ export const SubagentMessageGroup: React.FC<SubagentMessageGroupProps> = ({
               <Bot className="h-3.5 w-3.5" />
             </div>
             <span className="text-sm font-medium text-foreground/80 truncate">
-              {group.subagentType ? getSubagentTypeLabel(group.subagentType) : '子代理'}
+              {group.subagentType ? getSubagentTypeLabel(group.subagentType, t) : t('subagent.subagent')}
             </span>
             <div className="h-3 w-px bg-border/50 mx-1" />
             <span className="text-xs text-muted-foreground truncate">
-              执行过程
+              {t('subagent.executionProcess')}
             </span>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground/60">
-              {messageCount} 条消息
+              {t('subagent.messageCount', { count: messageCount })}
             </span>
             <div className="text-muted-foreground group-hover/header:text-foreground transition-colors">
               {isExpanded ? (
@@ -175,7 +173,7 @@ export const SubagentMessageGroup: React.FC<SubagentMessageGroupProps> = ({
                   })
                 ) : (
                   <div className="text-xs text-muted-foreground px-2 py-4 text-center italic">
-                    暂无子代理消息
+                    {t('subagent.noSubagentMessages')}
                   </div>
                 )}
               </div>

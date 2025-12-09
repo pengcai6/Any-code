@@ -12,6 +12,7 @@ import type { ClaudeStreamMessage } from '@/types/claude';
 import type { RewindCapabilities, RewindMode } from '@/lib/api';
 import { formatTimestamp } from "@/lib/messageUtils";
 import { api } from '@/lib/api';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface UserMessageProps {
   /** 消息数据 */
@@ -137,6 +138,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
   projectPath,
   onRevert
 }) => {
+  const { t } = useTranslation();
   const engine = (message as any).engine || 'claude';
   const text = extractUserText(message);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -296,12 +298,12 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                     {isExpanded ? (
                       <>
                         <ChevronUp className="h-3 w-3" />
-                        <span>收起</span>
+                        <span>{t('message.collapse')}</span>
                       </>
                     ) : (
                       <>
                         <ChevronDown className="h-3 w-3" />
-                        <span>展开</span>
+                        <span>{t('message.expand')}</span>
                       </>
                     )}
                   </button>
@@ -324,7 +326,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs">
                       <p className="text-sm">
-                        {capabilities?.warning || "此提示词无法回滚代码"}
+                        {capabilities?.warning || t('planMode.cannotRollbackCode')}
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -345,7 +347,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    撤回到此消息
+                    {t('message.revertToMessage')}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -378,10 +380,10 @@ export const UserMessage: React.FC<UserMessageProps> = ({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-orange-600" />
-                选择撤回模式
+                {t('planMode.selectRevertMode')}
               </DialogTitle>
               <DialogDescription>
-                将撤回到提示词 #{(promptIndex ?? 0) + 1}，请选择撤回方式
+                {t('planMode.revertToPrompt', { index: (promptIndex ?? 0) + 1 })}
               </DialogDescription>
             </DialogHeader>
 
@@ -399,14 +401,14 @@ export const UserMessage: React.FC<UserMessageProps> = ({
               {/* 加载中状态 */}
               {isLoadingCapabilities && (
                 <div className="flex items-center justify-center py-4">
-                  <div className="text-sm text-muted-foreground">检测撤回能力中...</div>
+                  <div className="text-sm text-muted-foreground">{t('planMode.checkingCapabilities')}</div>
                 </div>
               )}
 
               {/* 三种模式选择 */}
               {!isLoadingCapabilities && capabilities && (
                 <div className="space-y-3">
-                  <div className="text-sm font-medium">选择撤回内容：</div>
+                  <div className="text-sm font-medium">{t('planMode.selectRevertContent')}</div>
 
                   {/* 模式1: 仅对话 */}
                   <div className={cn(
@@ -418,13 +420,13 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="font-medium">仅删除对话</div>
+                        <div className="font-medium">{t('planMode.conversationOnly')}</div>
                         <div className="text-sm text-muted-foreground">
-                          删除此消息及之后的所有对话，代码保持不变
+                          {t('planMode.conversationOnlyDesc')}
                         </div>
                       </div>
                       <div className="text-xs text-green-600 font-medium bg-green-50 dark:bg-green-950 px-2 py-1 rounded">
-                        总是可用
+                        {t('planMode.alwaysAvailable')}
                       </div>
                     </div>
                   </div>
@@ -440,9 +442,9 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="font-medium">仅回滚代码</div>
+                        <div className="font-medium">{t('planMode.codeOnly')}</div>
                         <div className="text-sm text-muted-foreground">
-                          代码回滚到此消息前的状态，保留对话记录
+                          {t('planMode.codeOnlyDesc')}
                         </div>
                       </div>
                       <div className={cn(
@@ -451,7 +453,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                           ? "text-green-600 bg-green-50 dark:bg-green-950"
                           : "text-muted-foreground bg-muted"
                       )}>
-                        {capabilities.code ? "可用" : "不可用"}
+                        {capabilities.code ? t('planMode.available') : t('planMode.unavailable')}
                       </div>
                     </div>
                   </div>
@@ -467,9 +469,9 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                   >
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <div className="font-medium">完整撤回</div>
+                        <div className="font-medium">{t('planMode.fullRevert')}</div>
                         <div className="text-sm text-muted-foreground">
-                          删除对话并回滚代码，恢复到此消息前的完整状态
+                          {t('planMode.fullRevertDesc')}
                         </div>
                       </div>
                       <div className={cn(
@@ -478,7 +480,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                           ? "text-green-600 bg-green-50 dark:bg-green-950"
                           : "text-muted-foreground bg-muted"
                       )}>
-                        {capabilities.both ? "可用" : "不可用"}
+                        {capabilities.both ? t('planMode.available') : t('planMode.unavailable')}
                       </div>
                     </div>
                   </div>
@@ -488,7 +490,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>警告：</strong>此操作不可撤销，删除的对话无法恢复。
+                  <strong>{t('planMode.revertWarning').split('：')[0]}：</strong>{t('planMode.revertWarning').split('：')[1]}
                 </AlertDescription>
               </Alert>
             </div>
@@ -498,7 +500,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({
                 variant="outline"
                 onClick={() => setShowConfirmDialog(false)}
               >
-                取消
+                {t('buttons.cancel')}
               </Button>
             </DialogFooter>
           </DialogContent>

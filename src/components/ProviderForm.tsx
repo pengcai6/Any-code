@@ -15,6 +15,7 @@ import {
 import { type ProviderConfig } from '@/lib/api';
 import { Toast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
+import { useTranslation } from "@/hooks/useTranslation";
 
 interface ProviderFormProps {
   initialData?: ProviderConfig;
@@ -22,11 +23,12 @@ interface ProviderFormProps {
   onCancel: () => void;
 }
 
-export default function ProviderForm({ 
-  initialData, 
-  onSubmit, 
-  onCancel 
+export default function ProviderForm({
+  initialData,
+  onSubmit,
+  onCancel
 }: ProviderFormProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<Omit<ProviderConfig, 'id'>>({
     name: initialData?.name || '',
     description: initialData?.description || '',
@@ -54,16 +56,16 @@ export default function ProviderForm({
 
   const validateForm = (): string | null => {
     if (!formData.name.trim()) {
-      return '请输入代理商名称';
+      return t('provider.providerNameRequiredClaude');
     }
     if (!formData.base_url.trim()) {
-      return '请输入API地址';
+      return t('provider.baseUrlRequired');
     }
     if (!formData.base_url.startsWith('http://') && !formData.base_url.startsWith('https://')) {
-      return 'API地址必须以 http:// 或 https:// 开头';
+      return t('provider.baseUrlInvalid');
     }
     if (!formData.auth_token?.trim() && !formData.api_key?.trim()) {
-      return '请至少填写认证Token或API Key中的一个';
+      return t('provider.authRequired');
     }
     return null;
   };
@@ -97,9 +99,9 @@ export default function ProviderForm({
       
     } catch (error) {
       console.error('Failed to save provider config:', error);
-      setToastMessage({ 
-        message: `${isEditing ? '更新' : '添加'}代理商配置失败: ${error}`, 
-        type: 'error' 
+      setToastMessage({
+        message: t('provider.saveConfigFailed', { error: String(error) }),
+        type: 'error'
       });
     } finally {
       setLoading(false);
@@ -119,36 +121,36 @@ export default function ProviderForm({
             <div className="space-y-4">
               <h3 className="text-sm font-medium flex items-center gap-2">
                 <Info className="h-4 w-4" />
-                基本信息
+                {t('provider.basicInfo')}
               </h3>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">代理商名称 *</Label>
+                  <Label htmlFor="name">{t('provider.providerNameLabel')} *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="例如：OpenAI 官方"
+                    placeholder={t('provider.providerNamePlaceholderClaude')}
                     disabled={loading}
                     required
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="description">描述</Label>
+                  <Label htmlFor="description">{t('provider.descriptionLabel')}</Label>
                   <Input
                     id="description"
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
-                    placeholder="例如：OpenAI 官方 API"
+                    placeholder={t('provider.descriptionPlaceholderClaude')}
                     disabled={loading}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="base_url">API 地址 *</Label>
+                <Label htmlFor="base_url">{t('provider.baseUrlLabel')} *</Label>
                 <Input
                   id="base_url"
                   value={formData.base_url}
@@ -164,15 +166,15 @@ export default function ProviderForm({
             <div className="space-y-4 pt-4 border-t">
               <h3 className="text-sm font-medium flex items-center gap-2">
                 <Eye className="h-4 w-4" />
-                认证信息
+                {t('provider.authInfo')}
                 <span className="text-xs text-muted-foreground ml-2">
-                  (至少填写一个)
+                  {t('provider.atLeastOne')}
                 </span>
               </h3>
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="auth_token">认证 Token</Label>
+                  <Label htmlFor="auth_token">{t('provider.authTokenLabel')}</Label>
                   <div className="relative">
                     <Input
                       id="auth_token"
@@ -226,26 +228,26 @@ export default function ProviderForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="model">模型名称</Label>
+                  <Label htmlFor="model">{t('provider.modelNameOptional')}</Label>
                   <Input
                     id="model"
                     value={formData.model || ''}
                     onChange={(e) => handleInputChange('model', e.target.value)}
-                    placeholder="claude-3-5-sonnet-20241022 (可选)"
+                    placeholder={t('provider.modelNamePlaceholder')}
                     disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    部分代理商需要指定特定的模型名称
+                    {t('provider.modelNameHelp')}
                   </p>
                 </div>
-                
+
                 {/* API Key Helper 控制选项 */}
                 <div className="p-3 bg-muted/50 rounded-lg space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="enable-auto-api-key-helper"
                       checked={formData.enable_auto_api_key_helper}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setFormData(prev => ({
                           ...prev,
                           enable_auto_api_key_helper: !!checked
@@ -253,21 +255,21 @@ export default function ProviderForm({
                       }
                       disabled={loading}
                     />
-                    <Label 
-                      htmlFor="enable-auto-api-key-helper" 
+                    <Label
+                      htmlFor="enable-auto-api-key-helper"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      自动生成 API Key Helper
+                      {t('provider.enableAutoApiKeyHelper')}
                     </Label>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formData.enable_auto_api_key_helper ? (
                       <>
-                        ✅ <strong>已启用：</strong>系统将根据认证Token自动生成 apiKeyHelper 命令（格式：echo 'your-token'）
+                        {t('provider.autoKeyHelperEnabled')}
                       </>
                     ) : (
                       <>
-                        ⚠️ <strong>已禁用：</strong>不会自动生成 apiKeyHelper。如果当前配置无法使用，请勾选此选项后再次尝试。
+                        {t('provider.autoKeyHelperDisabled')}
                       </>
                     )}
                   </p>
@@ -285,7 +287,7 @@ export default function ProviderForm({
               disabled={loading}
             >
               <X className="h-4 w-4 mr-2" aria-hidden="true" />
-              取消
+              {t('buttons.cancel')}
             </Button>
             <Button
               type="submit"
@@ -298,12 +300,12 @@ export default function ProviderForm({
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                  {isEditing ? '更新中...' : '添加中...'}
+                  {isEditing ? t('provider.updating') : t('provider.adding')}
                 </>
               ) : (
                 <>
                   <Save className="h-4 w-4 mr-2" aria-hidden="true" />
-                  {isEditing ? '更新配置' : '添加配置'}
+                  {isEditing ? t('provider.updateConfig') : t('provider.addConfig')}
                 </>
               )}
             </Button>
