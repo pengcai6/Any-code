@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   FolderOpen,
   FileText,
@@ -111,6 +112,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   loading,
   className,
 }) => {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -470,10 +472,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>确认删除项目</DialogTitle>
+            <DialogTitle>{t('projectList.confirmDeleteTitle')}</DialogTitle>
             <DialogDescription>
-              您确定要删除项目 "{projectToDelete ? getProjectName(projectToDelete.path) : ""}" 吗？
-              这将删除所有相关的会话数据和Todo文件，此操作无法撤销。
+              {t('projectList.confirmDeleteDescription', { 
+                projectName: projectToDelete ? getProjectName(projectToDelete.path) : "" 
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -482,14 +485,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               onClick={cancelDelete}
               disabled={isDeleting}
             >
-              取消
+              {t('projectList.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDelete}
               disabled={isDeleting}
             >
-              {isDeleting ? "删除中..." : "确认删除"}
+              {isDeleting ? t('projectList.deleting') : t('projectList.confirmDelete')}
             </Button>
           </DialogFooter>
         </DialogContent>
