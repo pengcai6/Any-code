@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, Check, RefreshCw, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +24,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
   onEdit,
   className,
 }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -48,7 +50,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
               {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>复制内容</TooltipContent>
+          <TooltipContent>{t('message.copyContent')}</TooltipContent>
         </Tooltip>
 
         {onRegenerate && (
@@ -63,7 +65,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
                 <RefreshCw className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>重新生成</TooltipContent>
+            <TooltipContent>{t('message.regenerate')}</TooltipContent>
           </Tooltip>
         )}
 
@@ -79,7 +81,7 @@ export const MessageActions: React.FC<MessageActionsProps> = ({
                 <Edit2 className="h-3.5 w-3.5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>编辑消息</TooltipContent>
+            <TooltipContent>{t('message.editMessage')}</TooltipContent>
           </Tooltip>
         )}
       </div>
