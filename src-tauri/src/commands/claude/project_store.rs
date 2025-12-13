@@ -160,6 +160,10 @@ impl ProjectStore {
 
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
                 if let Some(session_id) = path.file_stem().and_then(|s| s.to_str()) {
+                    // 🔧 Skip agent-*.jsonl files (subagent sessions)
+                    if session_id.starts_with("agent-") {
+                        continue;
+                    }
                     let metadata = fs::metadata(&path)
                         .map_err(|e| format!("Failed to read file metadata: {}", e))?;
 
