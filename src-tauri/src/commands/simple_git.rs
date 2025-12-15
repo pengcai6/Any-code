@@ -208,6 +208,8 @@ pub fn git_commit_changes(project_path: &str, message: &str) -> Result<bool, Str
 }
 
 /// Reset repository to a specific commit
+/// ⚠️ DEPRECATED: Use git_revert_range for precise rollback instead
+/// This function will lose all commits after the target commit!
 pub fn git_reset_hard(project_path: &str, commit: &str) -> Result<(), String> {
     log::info!("Resetting repository to commit: {}", commit);
 
@@ -231,6 +233,199 @@ pub fn git_reset_hard(project_path: &str, commit: &str) -> Result<(), String> {
 
     log::info!("Successfully reset to commit: {}", commit);
     Ok(())
+}
+
+// ============================================================================
+// Precise Revert (精准撤回 - 只撤销指定范围的提交，保留其他更改)
+// ============================================================================
+
+/// Result of a precise revert operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertResult {
+    /// Whether the revert was successful
+    pub success: bool,
+    /// Number of commits reverted
+    pub commits_reverted: usize,
+    /// The new commit hash after revert (if a revert commit was created)
+    pub new_commit: Option<String>,
+    /// Message describing what happened
+    pub message: String,
+    /// Whether there were conflicts that need manual resolution
+    pub has_conflicts: bool,
+}
+
+/// Precisely revert a range of commits (commit_before..commit_after)
+/// This ONLY undoes changes from the specified range, preserving all other commits
+///
+/// Unlike git_reset_hard which loses all commits after the target,
+/// this creates a new revert commit that only undoes the specific changes.
+///
+/// Example:
+///   History: A -> B -> C -> D -> E (HEAD)
+///   If we want to revert changes from B..C (prompt #1):
+///   - git_reset_hard("B") would lose C, D, E
+///   - git_revert_range("B", "C") creates: A -> B -> C -> D -> E -> R (HEAD)
+///     where R only undoes changes between B and C, keeping D and E intact
+pub fn git_revert_range(
+    project_path: &str,
+    commit_before: &str,
+    commit_after: &str,
+    message: &str,
+) -> Result<RevertResult, String> {
+    log::info!(
+        "[Precise Revert] Reverting range {}..{} in {}",
+        &commit_before[..8.min(commit_before.len())],
+        &commit_after[..8.min(commit_after.len())],
+        project_path
+    );
+
+    // Check if commit_before and commit_after are the same (no changes to revert)
+    if commit_before == commit_after {
+        log::info!("[Precise Revert] No changes to revert (same commit)");
+        return Ok(RevertResult {
+            success: true,
+            commits_reverted: 0,
+            new_commit: None,
+            message: "没有代码更改需要撤回".to_string(),
+            has_conflicts: false,
+        });
+    }
+
+    // Count commits in range
+    let commit_count = git_commit_count_between(project_path, commit_before, commit_after)
+        .unwrap_or(1);
+
+    log::info!(
+        "[Precise Revert] Found {} commits in range to revert",
+        commit_count
+    );
+
+    // Try to revert the range
+    // Using --no-commit to stage all reverts, then commit once
+    let mut revert_cmd = Command::new("git");
+    revert_cmd.args([
+        "revert",
+        "--no-commit",
+        &format!("{}..{}", commit_before, commit_after),
+    ]);
+    revert_cmd.current_dir(project_path);
+
+    #[cfg(target_os = "windows")]
+    revert_cmd.creation_flags(0x08000000);
+
+    let revert_output = revert_cmd
+        .output()
+        .map_err(|e| format!("Failed to execute git revert: {}", e))?;
+
+    // Check for conflicts
+    if !revert_output.status.success() {
+        let stderr = String::from_utf8_lossy(&revert_output.stderr);
+
+        // Check if it's a conflict error
+        if stderr.contains("conflict") || stderr.contains("CONFLICT") {
+            log::warn!("[Precise Revert] Conflicts detected, attempting to abort");
+
+            // Abort the revert
+            let mut abort_cmd = Command::new("git");
+            abort_cmd.args(["revert", "--abort"]);
+            abort_cmd.current_dir(project_path);
+            #[cfg(target_os = "windows")]
+            abort_cmd.creation_flags(0x08000000);
+            let _ = abort_cmd.output();
+
+            return Ok(RevertResult {
+                success: false,
+                commits_reverted: 0,
+                new_commit: None,
+                message: format!(
+                    "撤回时发生冲突，无法自动完成。建议手动处理或使用'仅删除对话'模式。\n详情: {}",
+                    stderr.lines().take(3).collect::<Vec<_>>().join("\n")
+                ),
+                has_conflicts: true,
+            });
+        }
+
+        // Other error
+        return Err(format!("Git revert failed: {}", stderr));
+    }
+
+    // Check if there are staged changes to commit
+    let mut status_cmd = Command::new("git");
+    status_cmd.args(["status", "--porcelain"]);
+    status_cmd.current_dir(project_path);
+    #[cfg(target_os = "windows")]
+    status_cmd.creation_flags(0x08000000);
+
+    let status_output = status_cmd
+        .output()
+        .map_err(|e| format!("Failed to check status: {}", e))?;
+
+    let has_changes = !String::from_utf8_lossy(&status_output.stdout)
+        .trim()
+        .is_empty();
+
+    if !has_changes {
+        log::info!("[Precise Revert] No changes after revert (already at target state)");
+        return Ok(RevertResult {
+            success: true,
+            commits_reverted: commit_count,
+            new_commit: None,
+            message: "代码已经处于目标状态，无需更改".to_string(),
+            has_conflicts: false,
+        });
+    }
+
+    // Commit the reverted changes
+    let mut commit_cmd = Command::new("git");
+    commit_cmd.args(["commit", "-m", message]);
+    commit_cmd.current_dir(project_path);
+    #[cfg(target_os = "windows")]
+    commit_cmd.creation_flags(0x08000000);
+
+    let commit_output = commit_cmd
+        .output()
+        .map_err(|e| format!("Failed to commit revert: {}", e))?;
+
+    if !commit_output.status.success() {
+        let stderr = String::from_utf8_lossy(&commit_output.stderr);
+        return Err(format!("Failed to commit revert: {}", stderr));
+    }
+
+    // Get the new commit hash
+    let new_commit = git_current_commit(project_path).ok();
+
+    log::info!(
+        "[Precise Revert] Successfully reverted {} commits, new commit: {:?}",
+        commit_count,
+        new_commit.as_ref().map(|c| &c[..8.min(c.len())])
+    );
+
+    Ok(RevertResult {
+        success: true,
+        commits_reverted: commit_count,
+        new_commit,
+        message: format!("成功撤回 {} 个提交的代码更改", commit_count),
+        has_conflicts: false,
+    })
+}
+
+/// Tauri command wrapper for precise revert
+#[tauri::command]
+pub fn precise_revert_code(
+    project_path: String,
+    commit_before: String,
+    commit_after: String,
+    prompt_index: usize,
+) -> Result<RevertResult, String> {
+    let message = format!(
+        "[Revert] 撤回提示词 #{} 的代码更改 ({}..{})",
+        prompt_index,
+        &commit_before[..8.min(commit_before.len())],
+        &commit_after[..8.min(commit_after.len())]
+    );
+
+    git_revert_range(&project_path, &commit_before, &commit_after, &message)
 }
 
 /// Save uncommitted changes to stash

@@ -58,7 +58,7 @@ use commands::provider::{
     get_current_provider_config, get_provider_config, get_provider_presets, query_provider_usage,
     switch_provider_config, test_provider_connection, update_provider_config,
 };
-use commands::simple_git::{check_and_init_git, check_reset_safety};
+use commands::simple_git::{check_and_init_git, check_reset_safety, precise_revert_code};
 use commands::storage::{
     storage_analyze_query, storage_delete_row, storage_execute_sql, storage_get_performance_stats,
     storage_insert_row, storage_list_tables, storage_read_table, storage_reset_database,
@@ -416,6 +416,7 @@ fn main() {
             // Prompt Revert System
             check_and_init_git,
             check_reset_safety,
+            precise_revert_code,
             record_prompt_sent,
             mark_prompt_completed,
             revert_to_prompt,

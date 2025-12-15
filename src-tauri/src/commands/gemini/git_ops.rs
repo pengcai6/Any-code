@@ -696,7 +696,7 @@ pub async fn revert_gemini_to_prompt(
         }
 
         RewindMode::CodeOnly => {
-            log::info!("[Gemini Rewind] Reverting code only");
+            log::info!("[Gemini Rewind] Reverting code only - using precise revert");
 
             let record = git_record.unwrap();
 
@@ -710,18 +710,43 @@ pub async fn revert_gemini_to_prompt(
             )
             .map_err(|e| format!("Failed to stash changes: {}", e))?;
 
-            // Reset to commit before this prompt
-            simple_git::git_reset_hard(&project_path, &record.commit_before)
-                .map_err(|e| format!("Failed to reset code: {}", e))?;
+            // Use precise revert: only undo changes from this prompt, keep other commits
+            if let Some(ref commit_after) = record.commit_after {
+                let revert_result = simple_git::git_revert_range(
+                    &project_path,
+                    &record.commit_before,
+                    commit_after,
+                    &format!("[Gemini Revert] 撤回提示词 #{} 的代码更改", prompt_index),
+                )
+                .map_err(|e| format!("Failed to revert code: {}", e))?;
 
-            log::info!(
-                "[Gemini Rewind] Successfully reverted code to prompt #{}",
-                prompt_index
-            );
+                if !revert_result.success {
+                    return Err(revert_result.message);
+                }
+
+                log::info!(
+                    "[Gemini Rewind] Successfully reverted code for prompt #{} using precise revert (reverted {} commits)",
+                    prompt_index,
+                    revert_result.commits_reverted
+                );
+            } else {
+                // No commit_after, fallback to reset
+                log::warn!(
+                    "[Gemini Rewind] No commit_after for prompt #{}, falling back to git reset",
+                    prompt_index
+                );
+                simple_git::git_reset_hard(&project_path, &record.commit_before)
+                    .map_err(|e| format!("Failed to reset code: {}", e))?;
+
+                log::info!(
+                    "[Gemini Rewind] Successfully reverted code to prompt #{} using reset",
+                    prompt_index
+                );
+            }
         }
 
         RewindMode::Both => {
-            log::info!("[Gemini Rewind] Reverting both conversation and code");
+            log::info!("[Gemini Rewind] Reverting both conversation and code - using precise revert");
 
             let record = git_record.unwrap();
 
@@ -735,9 +760,39 @@ pub async fn revert_gemini_to_prompt(
             )
             .map_err(|e| format!("Failed to stash changes: {}", e))?;
 
-            // Reset code
-            simple_git::git_reset_hard(&project_path, &record.commit_before)
-                .map_err(|e| format!("Failed to reset code: {}", e))?;
+            // Use precise revert: only undo changes from this prompt, keep other commits
+            if let Some(ref commit_after) = record.commit_after {
+                let revert_result = simple_git::git_revert_range(
+                    &project_path,
+                    &record.commit_before,
+                    commit_after,
+                    &format!("[Gemini Revert] 撤回提示词 #{} 的代码更改", prompt_index),
+                )
+                .map_err(|e| format!("Failed to revert code: {}", e))?;
+
+                if !revert_result.success {
+                    return Err(revert_result.message);
+                }
+
+                log::info!(
+                    "[Gemini Rewind] Successfully reverted code for prompt #{} using precise revert (reverted {} commits)",
+                    prompt_index,
+                    revert_result.commits_reverted
+                );
+            } else {
+                // No commit_after, fallback to reset
+                log::warn!(
+                    "[Gemini Rewind] No commit_after for prompt #{}, falling back to git reset",
+                    prompt_index
+                );
+                simple_git::git_reset_hard(&project_path, &record.commit_before)
+                    .map_err(|e| format!("Failed to reset code: {}", e))?;
+
+                log::info!(
+                    "[Gemini Rewind] Successfully reverted code to prompt #{} using reset",
+                    prompt_index
+                );
+            }
 
             // Truncate session
             truncate_gemini_session_to_prompt(&session_id, &project_path, prompt_index)?;

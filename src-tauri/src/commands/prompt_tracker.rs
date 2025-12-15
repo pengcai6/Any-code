@@ -703,7 +703,7 @@ pub async fn revert_to_prompt(
         }
 
         RewindMode::CodeOnly => {
-            log::info!("Reverting code only (keeping messages)");
+            log::info!("Reverting code only (keeping messages) - using precise revert");
 
             let record = git_record.unwrap(); // Safe because we validated above
 
@@ -714,15 +714,41 @@ pub async fn revert_to_prompt(
             )
             .map_err(|e| format!("Failed to stash changes: {}", e))?;
 
-            // 2. Reset code to state before this prompt
-            simple_git::git_reset_hard(&project_path, &record.commit_before)
-                .map_err(|e| format!("Failed to reset code: {}", e))?;
+            // 2. Use precise revert: only undo changes from this prompt, keep other commits
+            if let Some(ref commit_after) = record.commit_after {
+                // We have commit_after, use precise revert
+                let revert_result = simple_git::git_revert_range(
+                    &project_path,
+                    &record.commit_before,
+                    commit_after,
+                    &format!("[Revert] 撤回提示词 #{} 的代码更改", prompt_index),
+                )
+                .map_err(|e| format!("Failed to revert code: {}", e))?;
 
-            log::info!("Successfully reverted code to prompt #{}", prompt_index);
+                if !revert_result.success {
+                    return Err(revert_result.message);
+                }
+
+                log::info!(
+                    "Successfully reverted code for prompt #{} using precise revert (reverted {} commits)",
+                    prompt_index,
+                    revert_result.commits_reverted
+                );
+            } else {
+                // No commit_after, fallback to reset (this prompt made no changes or wasn't completed)
+                log::warn!(
+                    "No commit_after for prompt #{}, falling back to git reset",
+                    prompt_index
+                );
+                simple_git::git_reset_hard(&project_path, &record.commit_before)
+                    .map_err(|e| format!("Failed to reset code: {}", e))?;
+
+                log::info!("Successfully reverted code to prompt #{} using reset", prompt_index);
+            }
         }
 
         RewindMode::Both => {
-            log::info!("Reverting both conversation and code");
+            log::info!("Reverting both conversation and code - using precise revert");
 
             let record = git_record.unwrap(); // Safe because we validated above
 
@@ -733,15 +759,43 @@ pub async fn revert_to_prompt(
             )
             .map_err(|e| format!("Failed to stash changes: {}", e))?;
 
-            // 2. Reset code to state before this prompt
-            simple_git::git_reset_hard(&project_path, &record.commit_before)
-                .map_err(|e| format!("Failed to reset code: {}", e))?;
+            // 2. Use precise revert: only undo changes from this prompt, keep other commits
+            if let Some(ref commit_after) = record.commit_after {
+                // We have commit_after, use precise revert
+                let revert_result = simple_git::git_revert_range(
+                    &project_path,
+                    &record.commit_before,
+                    commit_after,
+                    &format!("[Revert] 撤回提示词 #{} 的代码更改", prompt_index),
+                )
+                .map_err(|e| format!("Failed to revert code: {}", e))?;
+
+                if !revert_result.success {
+                    return Err(revert_result.message);
+                }
+
+                log::info!(
+                    "Successfully reverted code for prompt #{} using precise revert (reverted {} commits)",
+                    prompt_index,
+                    revert_result.commits_reverted
+                );
+            } else {
+                // No commit_after, fallback to reset (this prompt made no changes or wasn't completed)
+                log::warn!(
+                    "No commit_after for prompt #{}, falling back to git reset",
+                    prompt_index
+                );
+                simple_git::git_reset_hard(&project_path, &record.commit_before)
+                    .map_err(|e| format!("Failed to reset code: {}", e))?;
+
+                log::info!("Successfully reverted code to prompt #{} using reset", prompt_index);
+            }
 
             // 3. Truncate session messages
             truncate_session_to_prompt(&session_id, &project_id, prompt_index)
                 .map_err(|e| format!("Failed to truncate session: {}", e))?;
 
-            // 4. Truncate git records
+            // 4. Truncate git records (only for this prompt, not all after)
             // Skip if Git operations are disabled
             if !git_operations_disabled {
                 truncate_git_records(&session_id, &project_id, &prompts, prompt_index)
@@ -751,7 +805,7 @@ pub async fn revert_to_prompt(
             }
 
             log::info!(
-                "Successfully reverted both conversation and code to prompt #{}",
+                "Successfully reverted both conversation and code for prompt #{}",
                 prompt_index
             );
         }
