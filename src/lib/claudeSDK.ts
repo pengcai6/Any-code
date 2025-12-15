@@ -3,9 +3,13 @@
  *
  * This service provides direct Claude API integration using the official
  * Anthropic TypeScript SDK, replacing CLI calls where appropriate.
+ *
+ * 对于第三方 API 代理，提供 sendMessageDirect 方法直接使用 Tauri HTTP 插件，
+ * 绕过 SDK 内部的 fetch，避免 CORS 问题。
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
 import { api } from './api';
 
 export interface ClaudeSDKConfig {
@@ -124,6 +128,7 @@ export class ClaudeSDKService {
 
   /**
    * Send a single message and get response (non-streaming)
+   * 使用 Anthropic SDK，可能受 CORS 限制
    */
   async sendMessage(
     messages: ClaudeMessage[],
@@ -134,43 +139,103 @@ export class ClaudeSDKService {
       systemPrompt?: string;
     } = {}
   ): Promise<ClaudeResponse> {
-    await this.ensureInitialized();
+    // 优先使用直接调用方式，绕过 SDK 的 CORS 问题
+    return this.sendMessageDirect(messages, options);
+  }
 
-    if (!this.client) {
-      throw new Error('Claude SDK not initialized');
+  /**
+   * 直接使用 Tauri HTTP 插件发送消息，完全绕过 Anthropic SDK
+   * 这是解决第三方 API 代理 CORS 问题的可靠方案
+   */
+  async sendMessageDirect(
+    messages: ClaudeMessage[],
+    options: {
+      model?: string;
+      maxTokens?: number;
+      temperature?: number;
+      systemPrompt?: string;
+    } = {}
+  ): Promise<ClaudeResponse> {
+    // 获取配置
+    const providerConfig = await api.getCurrentProviderConfig();
+
+    const apiKey = providerConfig.anthropic_api_key ||
+                  providerConfig.anthropic_auth_token ||
+                  this.config.apiKey;
+
+    if (!apiKey) {
+      throw new Error('No API key available. Please configure provider settings.');
     }
 
+    let baseURL = providerConfig.anthropic_base_url || this.config.baseURL || 'https://api.anthropic.com';
+
+    // 规范化 URL
+    baseURL = baseURL.replace(/\/+$/, ''); // 移除末尾斜杠
+    if (!baseURL.endsWith('/v1')) {
+      baseURL = `${baseURL}/v1`;
+    }
+
+    const endpoint = `${baseURL}/messages`;
     const model = options.model || this.config.defaultModel!;
     const maxTokens = options.maxTokens || this.config.maxTokens!;
 
+    // 构建请求体
+    const requestBody: any = {
+      model,
+      max_tokens: maxTokens,
+      messages: messages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+    };
+
+    if (options.temperature !== undefined) {
+      requestBody.temperature = options.temperature;
+    }
+
+    if (options.systemPrompt) {
+      requestBody.system = options.systemPrompt;
+    }
+
+    console.log('[ClaudeSDK] sendMessageDirect to:', endpoint);
+
     try {
-      const response = await this.client.messages.create({
-        model,
-        max_tokens: maxTokens,
-        temperature: options.temperature || this.config.temperature,
-        // 注意：不能同时使用 temperature 和 top_p
-        system: options.systemPrompt,
-        messages: messages.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
+      const response = await tauriFetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(requestBody),
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ClaudeSDK] API error:', response.status, errorText);
+        throw new Error(`API request failed: ${response.status} ${response.statusText}\n${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // 解析响应
+      const textContent = data.content?.find((c: any) => c.type === 'text');
+
       return {
-        id: response.id,
-        content: response.content[0]?.type === 'text' ? response.content[0].text : '',
+        id: data.id || 'direct-response',
+        content: textContent?.text || '',
         role: 'assistant',
-        model: response.model,
+        model: data.model || model,
         usage: {
-          input_tokens: response.usage.input_tokens,
-          output_tokens: response.usage.output_tokens,
-          cache_creation_input_tokens: response.usage.cache_creation_input_tokens || undefined,
-          cache_read_input_tokens: response.usage.cache_read_input_tokens || undefined,
+          input_tokens: data.usage?.input_tokens || 0,
+          output_tokens: data.usage?.output_tokens || 0,
+          cache_creation_input_tokens: data.usage?.cache_creation_input_tokens,
+          cache_read_input_tokens: data.usage?.cache_read_input_tokens,
         },
-        stop_reason: response.stop_reason,
+        stop_reason: data.stop_reason || null,
       };
     } catch (error) {
-      console.error('[ClaudeSDK] Message sending failed:', error);
+      console.error('[ClaudeSDK] sendMessageDirect failed:', error);
       throw new Error(`Failed to send message: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
