@@ -762,11 +762,12 @@ pub async fn revert_to_prompt(
                     &commit_after[..8.min(commit_after.len())]
                 );
 
-                let revert_result = simple_git::git_revert_range(
+                let revert_result = simple_git::git_revert_range_with_retry(
                     &project_path,
                     &record.commit_before,
                     &commit_after,
                     &format!("[Revert] 撤回提示词 #{} 的代码更改", idx),
+                    3, // Max 3 retries for Git lock conflicts
                 );
 
                 match revert_result {
@@ -880,11 +881,12 @@ pub async fn revert_to_prompt(
                     &commit_after[..8.min(commit_after.len())]
                 );
 
-                let revert_result = simple_git::git_revert_range(
+                let revert_result = simple_git::git_revert_range_with_retry(
                     &project_path,
                     &record.commit_before,
                     &commit_after,
                     &format!("[Revert] 撤回提示词 #{} 的代码更改", idx),
+                    3, // Max 3 retries for Git lock conflicts
                 );
 
                 match revert_result {
@@ -938,20 +940,67 @@ pub async fn revert_to_prompt(
             );
 
             // 7. Truncate session messages (delete prompt #N and all after)
-            truncate_session_to_prompt(&session_id, &project_id, prompt_index)
-                .map_err(|e| format!("Failed to truncate session: {}", e))?;
+            // 🔧 ATOMIC PROTECTION: If session truncation fails, rollback Git changes
+            if let Err(e) = truncate_session_to_prompt(&session_id, &project_id, prompt_index) {
+                log::error!(
+                    "[Atomic Rollback] Session truncation failed, rolling back Git to original state: {}",
+                    e
+                );
+
+                // Attempt to rollback Git changes
+                if let Err(rollback_err) = simple_git::git_reset_hard(&project_path, &original_head) {
+                    log::error!("[CRITICAL] Git rollback failed: {}", rollback_err);
+                    return Err(format!(
+                        "会话文件截断失败，且 Git 回滚也失败，仓库可能处于不一致状态。\n\
+                         会话截断错误: {}\n\
+                         Git 回滚错误: {}\n\
+                         请手动检查仓库状态并运行 'git status'。",
+                        e, rollback_err
+                    ));
+                }
+
+                return Err(format!(
+                    "会话文件截断失败，已原子性回滚所有 Git 更改到操作前状态。\n\
+                     原因: {}",
+                    e
+                ));
+            }
 
             // 8. Truncate git records
-            // Skip if Git operations are disabled
+            // 🔧 ATOMIC PROTECTION: If git records truncation fails, rollback Git changes
+            // Note: Session file is already truncated at this point, cannot easily rollback
             if !git_operations_disabled {
-                truncate_git_records(&session_id, &project_id, &prompts, prompt_index)
-                    .map_err(|e| format!("Failed to truncate git records: {}", e))?;
+                if let Err(e) = truncate_git_records(&session_id, &project_id, &prompts, prompt_index) {
+                    log::error!(
+                        "[Atomic Rollback] Git records truncation failed, rolling back Git: {}",
+                        e
+                    );
+
+                    // Attempt to rollback Git changes
+                    if let Err(rollback_err) = simple_git::git_reset_hard(&project_path, &original_head) {
+                        log::error!("[CRITICAL] Git rollback failed: {}", rollback_err);
+                        return Err(format!(
+                            "Git 记录截断失败，且 Git 回滚也失败。\n\
+                             记录截断错误: {}\n\
+                             Git 回滚错误: {}\n\
+                             注意：会话文件已截断但无法回滚。",
+                            e, rollback_err
+                        ));
+                    }
+
+                    return Err(format!(
+                        "Git 记录截断失败，已回滚 Git 更改到操作前状态。\n\
+                         注意：会话文件已截断但无法回滚，可能需要手动恢复。\n\
+                         原因: {}",
+                        e
+                    ));
+                }
             } else {
                 log::info!("Skipping git records truncation (Git operations disabled)");
             }
 
             log::info!(
-                "Successfully reverted both conversation and code to state before prompt #{}",
+                "✅ [Atomic Revert] Successfully reverted both conversation and code to state before prompt #{}",
                 prompt_index
             );
         }

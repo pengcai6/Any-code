@@ -758,11 +758,12 @@ pub async fn revert_gemini_to_prompt(
                     &commit_after[..8.min(commit_after.len())]
                 );
 
-                let revert_result = simple_git::git_revert_range(
+                let revert_result = simple_git::git_revert_range_with_retry(
                     &project_path,
                     &record.commit_before,
                     &commit_after,
                     &format!("[Gemini Revert] 撤回提示词 #{} 的代码更改", record.prompt_index),
+                    3, // Max 3 retries for Git lock conflicts
                 );
 
                 match revert_result {
@@ -879,11 +880,12 @@ pub async fn revert_gemini_to_prompt(
                     &commit_after[..8.min(commit_after.len())]
                 );
 
-                let revert_result = simple_git::git_revert_range(
+                let revert_result = simple_git::git_revert_range_with_retry(
                     &project_path,
                     &record.commit_before,
                     &commit_after,
                     &format!("[Gemini Revert] 撤回提示词 #{} 的代码更改", record.prompt_index),
+                    3, // Max 3 retries for Git lock conflicts
                 );
 
                 match revert_result {
@@ -937,15 +939,59 @@ pub async fn revert_gemini_to_prompt(
             );
 
             // Truncate session
-            truncate_gemini_session_to_prompt(&session_id, &project_path, prompt_index)?;
+            // 🔧 ATOMIC PROTECTION: If session truncation fails, rollback Git changes
+            if let Err(e) = truncate_gemini_session_to_prompt(&session_id, &project_path, prompt_index) {
+                log::error!(
+                    "[Gemini Atomic Rollback] Session truncation failed, rolling back Git: {}",
+                    e
+                );
+
+                if let Err(rollback_err) = simple_git::git_reset_hard(&project_path, &original_head) {
+                    log::error!("[CRITICAL] Git rollback failed: {}", rollback_err);
+                    return Err(format!(
+                        "会话截断失败且 Git 回滚失败。\n\
+                         会话错误: {}\n\
+                         Git 回滚错误: {}",
+                        e, rollback_err
+                    ));
+                }
+
+                return Err(format!(
+                    "会话截断失败，已原子性回滚 Git 更改。原因: {}",
+                    e
+                ));
+            }
 
             // Truncate git records
+            // 🔧 ATOMIC PROTECTION: If git records truncation fails, rollback Git changes
             if !git_operations_disabled {
-                truncate_gemini_git_records(&session_id, prompt_index)?;
+                if let Err(e) = truncate_gemini_git_records(&session_id, prompt_index) {
+                    log::error!(
+                        "[Gemini Atomic Rollback] Git records truncation failed, rolling back Git: {}",
+                        e
+                    );
+
+                    if let Err(rollback_err) = simple_git::git_reset_hard(&project_path, &original_head) {
+                        log::error!("[CRITICAL] Git rollback failed: {}", rollback_err);
+                        return Err(format!(
+                            "Git 记录截断失败且回滚失败。\n\
+                             记录错误: {}\n\
+                             回滚错误: {}\n\
+                             注意：会话已截断。",
+                            e, rollback_err
+                        ));
+                    }
+
+                    return Err(format!(
+                        "Git 记录截断失败，已回滚 Git 更改。\n\
+                         注意：会话已截断但无法回滚。原因: {}",
+                        e
+                    ));
+                }
             }
 
             log::info!(
-                "[Gemini Rewind] Successfully reverted both to state before prompt #{}",
+                "✅ [Gemini Atomic Revert] Successfully reverted both to state before prompt #{}",
                 prompt_index
             );
         }

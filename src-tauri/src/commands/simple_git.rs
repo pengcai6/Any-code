@@ -255,6 +255,83 @@ pub struct RevertResult {
     pub has_conflicts: bool,
 }
 
+/// Precisely revert a range of commits with automatic retry on lock conflicts
+///
+/// This function wraps git_revert_range with retry logic to handle Git lock conflicts
+/// (e.g., index.lock, refs.lock) that can occur during rapid consecutive operations.
+///
+/// Parameters:
+/// - max_retries: Maximum number of retry attempts (recommended: 3)
+/// - Retry delays: 100ms, 200ms, 300ms (exponential backoff)
+///
+/// Returns:
+/// - Ok(RevertResult) if successful (either immediately or after retries)
+/// - Err(String) if all retries are exhausted or non-lock errors occur
+pub fn git_revert_range_with_retry(
+    project_path: &str,
+    commit_before: &str,
+    commit_after: &str,
+    message: &str,
+    max_retries: u32,
+) -> Result<RevertResult, String> {
+    let mut last_error = String::new();
+
+    for attempt in 0..max_retries {
+        match git_revert_range(project_path, commit_before, commit_after, message) {
+            Ok(result) => {
+                if attempt > 0 {
+                    log::info!(
+                        "[Retry Success] Git revert succeeded on attempt {}/{}",
+                        attempt + 1,
+                        max_retries
+                    );
+                }
+                return Ok(result);
+            }
+            Err(e) => {
+                last_error = e.clone();
+
+                // Check if it's a lock-related error
+                let is_lock_error = e.contains("index.lock")
+                    || e.contains("Unable to create")
+                    || e.contains("Another git process")
+                    || e.contains("refs.lock")
+                    || e.contains("locked");
+
+                if is_lock_error && attempt < max_retries - 1 {
+                    // Exponential backoff: 100ms, 200ms, 300ms
+                    let wait_ms = 100 * (attempt as u64 + 1);
+                    log::warn!(
+                        "[Retry {}/{}] Git lock detected, waiting {}ms before retry. Error: {}",
+                        attempt + 1,
+                        max_retries,
+                        wait_ms,
+                        e.lines().next().unwrap_or("unknown")
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(wait_ms));
+                    continue;
+                }
+
+                // Non-lock error or retries exhausted
+                if is_lock_error && attempt == max_retries - 1 {
+                    log::error!(
+                        "[Retry Failed] Git lock persists after {} attempts",
+                        max_retries
+                    );
+                }
+
+                return Err(e);
+            }
+        }
+    }
+
+    Err(format!(
+        "Git revert 在 {} 次重试后仍失败: {}",
+        max_retries,
+        last_error
+    ))
+}
+
 /// Precisely revert a range of commits (commit_before..commit_after)
 /// This ONLY undoes changes from the specified range, preserving all other commits
 ///
@@ -267,6 +344,9 @@ pub struct RevertResult {
 ///   - git_reset_hard("B") would lose C, D, E
 ///   - git_revert_range("B", "C") creates: A -> B -> C -> D -> E -> R (HEAD)
 ///     where R only undoes changes between B and C, keeping D and E intact
+///
+/// Note: For better reliability in rapid consecutive operations, consider using
+/// git_revert_range_with_retry instead.
 pub fn git_revert_range(
     project_path: &str,
     commit_before: &str,
@@ -303,10 +383,12 @@ pub fn git_revert_range(
 
     // Try to revert the range
     // Using --no-commit to stage all reverts, then commit once
+    // Using --no-merges to skip merge commits (they require -m parameter which is ambiguous)
     let mut revert_cmd = Command::new("git");
     revert_cmd.args([
         "revert",
         "--no-commit",
+        "--no-merges", // Skip merge commits to avoid "commit is a merge but no -m option" error
         &format!("{}..{}", commit_before, commit_after),
     ]);
     revert_cmd.current_dir(project_path);
