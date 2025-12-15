@@ -175,9 +175,21 @@ impl ProjectStore {
                         .unwrap_or_default()
                         .as_secs();
 
-                    let (first_message, message_timestamp) = extract_first_user_message(&path);
+                    let (first_message_raw, message_timestamp) = extract_first_user_message(&path);
                     let last_message_timestamp = extract_last_message_timestamp(&path);
                     let model = extract_session_model(&path);
+
+                    // ✅ Fallback: 如果 first_message 为空，使用默认文本以确保会话能显示
+                    // 这样即使所有用户消息都被过滤掉，会话仍然可见
+                    let first_message = first_message_raw.or_else(|| {
+                        // 如果有 last_message_timestamp，说明会话确实有消息，只是被过滤了
+                        if last_message_timestamp.is_some() {
+                            Some(format!("Claude Code Session ({})", session_id))
+                        } else {
+                            // 真正的空会话
+                            None
+                        }
+                    });
 
                     let todo_path = todos_dir.join(format!("{}.json", session_id));
                     let todo_data = if todo_path.exists() {
