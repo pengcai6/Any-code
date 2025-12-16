@@ -963,10 +963,30 @@ pub async fn set_codex_mode_config(
 // Provider Configuration Paths
 // ============================================================================
 
-/// Get Codex config directory path
+/// Check if WSL mode should be used for Codex configuration
+/// Returns true if WSL is enabled and has a valid config directory
+fn should_use_wsl_config() -> bool {
+    let wsl_config = wsl_utils::get_wsl_config();
+    wsl_config.enabled && wsl_config.codex_dir_unc.is_some()
+}
+
+/// Get Codex config directory path (supports both Native and WSL modes)
+/// When WSL mode is enabled, returns the WSL UNC path (e.g., \\wsl$\Ubuntu\home\user\.codex)
+/// Otherwise returns the Windows native path (e.g., C:\Users\xxx\.codex)
 fn get_codex_config_dir() -> Result<PathBuf, String> {
+    // Check if WSL mode is enabled
+    if should_use_wsl_config() {
+        if let Some(wsl_dir) = wsl_utils::get_wsl_codex_dir() {
+            log::info!("[Codex Provider] Using WSL config directory: {:?}", wsl_dir);
+            return Ok(wsl_dir);
+        }
+    }
+
+    // Fall back to native Windows path
     let home_dir = dirs::home_dir().ok_or_else(|| "Cannot get home directory".to_string())?;
-    Ok(home_dir.join(".codex"))
+    let native_dir = home_dir.join(".codex");
+    log::debug!("[Codex Provider] Using native config directory: {:?}", native_dir);
+    Ok(native_dir)
 }
 
 /// Get Codex auth.json path
@@ -980,8 +1000,11 @@ fn get_codex_config_path() -> Result<PathBuf, String> {
 }
 
 /// Get Codex providers.json path (for custom presets)
+/// Note: Providers are stored in native Windows path, not WSL
+/// because they are managed by Workbench, not by Codex CLI
 fn get_codex_providers_path() -> Result<PathBuf, String> {
-    Ok(get_codex_config_dir()?.join("providers.json"))
+    let home_dir = dirs::home_dir().ok_or_else(|| "Cannot get home directory".to_string())?;
+    Ok(home_dir.join(".codex").join("providers.json"))
 }
 
 /// Extract API key from auth JSON
@@ -1041,12 +1064,17 @@ pub async fn get_codex_provider_presets() -> Result<Vec<CodexProviderConfig>, St
 }
 
 /// Get current Codex configuration
+/// Supports both Native Windows and WSL modes
 #[tauri::command]
 pub async fn get_current_codex_config() -> Result<CurrentCodexConfig, String> {
-    log::info!("[Codex Provider] Getting current config");
+    let is_wsl_mode = should_use_wsl_config();
+    log::info!("[Codex Provider] Getting current config (WSL mode: {})", is_wsl_mode);
 
     let auth_path = get_codex_auth_path()?;
     let config_path = get_codex_config_path()?;
+
+    log::debug!("[Codex Provider] Auth path: {:?}", auth_path);
+    log::debug!("[Codex Provider] Config path: {:?}", config_path);
 
     // Read auth.json
     let auth: serde_json::Value = if auth_path.exists() {
@@ -1081,18 +1109,27 @@ pub async fn get_current_codex_config() -> Result<CurrentCodexConfig, String> {
 
 /// Switch to a Codex provider configuration
 /// Preserves user's custom settings and OAuth tokens
+/// Supports both Native Windows and WSL modes
 #[tauri::command]
 pub async fn switch_codex_provider(config: CodexProviderConfig) -> Result<String, String> {
     log::info!("[Codex Provider] Switching to provider: {}", config.name);
+
+    let is_wsl_mode = should_use_wsl_config();
+    log::info!("[Codex Provider] WSL mode: {}", is_wsl_mode);
 
     let config_dir = get_codex_config_dir()?;
     let auth_path = get_codex_auth_path()?;
     let config_path = get_codex_config_path()?;
 
+    log::info!("[Codex Provider] Config directory: {:?}", config_dir);
+    log::info!("[Codex Provider] Auth path: {:?}", auth_path);
+    log::info!("[Codex Provider] Config path: {:?}", config_path);
+
     // Ensure config directory exists
     if !config_dir.exists() {
+        log::info!("[Codex Provider] Creating config directory: {:?}", config_dir);
         fs::create_dir_all(&config_dir)
-            .map_err(|e| format!("Failed to create .codex directory: {}", e))?;
+            .map_err(|e| format!("Failed to create .codex directory at {:?}: {}", config_dir, e))?;
     }
 
     // Validate new TOML if not empty
@@ -1204,9 +1241,13 @@ pub async fn switch_codex_provider(config: CodexProviderConfig) -> Result<String
         .map_err(|e| format!("Failed to write config.toml: {}", e))?;
 
     log::info!("[Codex Provider] Successfully switched to: {}", config.name);
+
+    // Return success message with mode info
+    let mode_info = if is_wsl_mode { " (WSL)" } else { "" };
     Ok(format!(
-        "Successfully switched to Codex provider: {}",
-        config.name
+        "Successfully switched to Codex provider: {}{}",
+        config.name,
+        mode_info
     ))
 }
 
