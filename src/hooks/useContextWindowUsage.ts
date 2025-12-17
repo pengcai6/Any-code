@@ -101,22 +101,19 @@ function extractCurrentUsage(messages: ClaudeStreamMessage[], engine?: string, c
     if (!usage) continue;
 
     const normalized = normalizeUsageForIndicator(usage);
+    // Context Window 只关心“输入 + 缓存”所占用的窗口大小；输出 tokens 不占用上下文窗口。
+    // 某些流式/增量消息可能只携带 output_tokens（或其他非快照字段），此时不应作为 Context Window 的数据源。
+    const maybeCurrent = normalized.inputTokens + normalized.cacheCreationTokens + normalized.cacheReadTokens;
+    if (maybeCurrent <= 0) {
+      continue;
+    }
     // Codex: 忽略明显不可能的“累计 token”值（上下文窗口内 tokens 不应远超窗口大小）
     if (engine === 'codex' && typeof contextWindowSize === 'number' && contextWindowSize > 0) {
-      const maybeCurrent =
-        normalized.inputTokens + normalized.cacheCreationTokens + normalized.cacheReadTokens;
       if (maybeCurrent > contextWindowSize * 1.1) {
         continue;
       }
     }
-    if (
-      normalized.inputTokens > 0 ||
-      normalized.outputTokens > 0 ||
-      normalized.cacheCreationTokens > 0 ||
-      normalized.cacheReadTokens > 0
-    ) {
-      return normalized;
-    }
+    return normalized;
   }
 
   return null;
