@@ -211,9 +211,19 @@ export function useSessionLifecycle(config: UseSessionLifecycleConfig): UseSessi
         }));
 
       // ✨ NEW: Normalize usage data for historical messages
+      // 修复：同时处理所有可能的 usage 位置，确保历史会话费用和上下文窗口正确显示
       const processedMessages = loadedMessages.map(msg => {
+        // 处理 message.usage (Claude 主要格式)
         if (msg.message?.usage) {
           msg.message.usage = normalizeUsageData(msg.message.usage);
+        }
+        // 处理顶层 usage (某些消息类型和 Codex)
+        if (msg.usage) {
+          msg.usage = normalizeUsageData(msg.usage);
+        }
+        // 处理 codexMetadata.usage (Codex 特有格式)
+        if ((msg as any).codexMetadata?.usage) {
+          (msg as any).codexMetadata.usage = normalizeUsageData((msg as any).codexMetadata.usage);
         }
         return msg;
       });
