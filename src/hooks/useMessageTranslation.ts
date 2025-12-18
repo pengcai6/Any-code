@@ -351,6 +351,31 @@ export function useMessageTranslation(config: UseMessageTranslationConfig): UseM
         if (processedMessage.usage) {
           processedMessage.usage = normalizeUsageData(processedMessage.usage);
         }
+
+        // 🆕 FIX: Retype slash command output messages from 'user' to 'system'
+        // Claude CLI returns slash command output (e.g., /cost, /context) wrapped in <local-command-stdout> tags
+        // These should be displayed as system messages, not user messages
+        if (processedMessage.type === 'user') {
+          const content = processedMessage.message?.content;
+          let hasCommandOutput = false;
+
+          if (typeof content === 'string') {
+            hasCommandOutput = content.includes('<local-command-stdout>');
+          } else if (Array.isArray(content)) {
+            hasCommandOutput = content.some((item: any) =>
+              item?.type === 'text' && item?.text?.includes('<local-command-stdout>')
+            );
+          }
+
+          if (hasCommandOutput) {
+            processedMessage = {
+              ...processedMessage,
+              type: 'system',
+              subtype: 'command-output'
+            };
+          }
+        }
+
         onMessagesUpdate((prev) => [...prev, processedMessage]);
       } catch (usageError) {
         console.warn('[useMessageTranslation] Error normalizing usage data, adding message without usage:', usageError);

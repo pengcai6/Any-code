@@ -1,8 +1,120 @@
 import React from "react";
-import { Info } from "lucide-react";
+import { Info, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toolRegistry } from "@/lib/toolRegistry";
 import type { ClaudeStreamMessage } from "@/types/claude";
+
+/**
+ * 格式化斜杠命令输出
+ * 提取 <local-command-stdout> 标签内的内容并美化显示
+ */
+const formatCommandOutput = (text: string): React.ReactNode => {
+  // 提取 local-command-stdout 内容
+  const match = text.match(/<local-command-stdout>([\s\S]*?)<\/local-command-stdout>/);
+  if (!match) return text;
+
+  const content = match[1].trim();
+
+  // 检测是否是表格格式（包含 | 分隔符）
+  const isTable = content.includes('|') && content.includes('---');
+
+  if (isTable) {
+    // 解析并渲染表格
+    const lines = content.split('\n').filter(line => line.trim());
+    const tableRows: string[][] = [];
+    const nonTableLines: string[] = [];
+
+    for (const line of lines) {
+      // 跳过分隔行（如 |---|---|---|）
+      if (line.match(/^\|[-\s|]+\|$/)) continue;
+
+      // 检查是否是表格行
+      if (line.includes('|') && !line.startsWith('#')) {
+        const cells = line.split('|').filter(cell => cell.trim()).map(cell => cell.trim());
+        if (cells.length > 0) {
+          tableRows.push(cells);
+        }
+      } else {
+        nonTableLines.push(line);
+      }
+    }
+
+    if (tableRows.length > 0) {
+      const [header, ...dataRows] = tableRows;
+      return (
+        <div className="space-y-3">
+          {/* 非表格内容（如标题） */}
+          {nonTableLines.map((line, i) => (
+            line.trim() && (
+              <div key={i} className={line.startsWith('#') ? 'font-semibold text-foreground' : ''}>
+                {line.replace(/^#+\s*/, '')}
+              </div>
+            )
+          ))}
+
+          {/* 表格 */}
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full border-collapse">
+              <thead>
+                <tr className="border-b border-border/50">
+                  {header.map((cell, i) => (
+                    <th key={i} className="text-left py-1.5 px-2 font-medium text-foreground/80">
+                      {cell}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dataRows.map((row, rowIdx) => (
+                  <tr key={rowIdx} className="border-b border-border/30 last:border-0">
+                    {row.map((cell, cellIdx) => (
+                      <td key={cellIdx} className="py-1.5 px-2 text-muted-foreground">
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // 非表格内容 - 简单格式化显示
+  return (
+    <div className="space-y-1">
+      {content.split('\n').map((line, i) => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return null;
+
+        // 标题样式
+        if (trimmedLine.startsWith('#')) {
+          return (
+            <div key={i} className="font-semibold text-foreground mt-2 first:mt-0">
+              {trimmedLine.replace(/^#+\s*/, '')}
+            </div>
+          );
+        }
+
+        // 键值对样式（如 **Key:** Value）
+        const kvMatch = trimmedLine.match(/^\*\*(.+?)\*\*:?\s*(.*)$/);
+        if (kvMatch) {
+          return (
+            <div key={i} className="flex gap-2">
+              <span className="font-medium text-foreground/80">{kvMatch[1]}:</span>
+              <span>{kvMatch[2]}</span>
+            </div>
+          );
+        }
+
+        // 普通行
+        return <div key={i}>{trimmedLine}</div>;
+      })}
+    </div>
+  );
+};
 
 interface SystemMessageProps {
   message: ClaudeStreamMessage;
@@ -121,6 +233,34 @@ export const SystemMessage: React.FC<SystemMessageProps> = ({
       <div className={cn("my-4", className)}>
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
           系统初始化完成。
+        </div>
+      </div>
+    );
+  }
+
+  // 🆕 处理斜杠命令输出（如 /cost, /context）
+  if (subtype === "command-output") {
+    const content = extractMessageContent(message);
+    if (!content) return null;
+
+    const formattedTime = formatTimestamp((message as any).receivedAt ?? (message as any).timestamp);
+
+    return (
+      <div className={cn("my-4", className)}>
+        <div className="rounded-lg border border-border/50 bg-muted/30 px-4 py-3 text-sm">
+          <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+            <Terminal className="h-3.5 w-3.5" />
+            命令输出
+            {formattedTime && (
+              <>
+                <span className="text-muted-foreground/40">•</span>
+                <span className="font-mono normal-case text-muted-foreground/70">{formattedTime}</span>
+              </>
+            )}
+          </div>
+          <div className="text-sm leading-relaxed text-muted-foreground">
+            {formatCommandOutput(content)}
+          </div>
         </div>
       </div>
     );
