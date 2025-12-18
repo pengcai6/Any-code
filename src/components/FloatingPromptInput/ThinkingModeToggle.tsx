@@ -28,14 +28,14 @@ export const ThinkingModeToggle: React.FC<ThinkingModeToggleProps> = ({
         <TooltipTrigger asChild>
           <Button
             variant={isEnabled ? "default" : "outline"}
-            size="default"
+            size="sm"
             disabled={disabled}
             onClick={onToggle}
             className={cn(
-              "gap-2 transition-all duration-200",
+              "h-8 gap-2 transition-all duration-200",
               isEnabled
                 ? "bg-amber-600 hover:bg-amber-700 text-white border-amber-600 shadow-sm shadow-amber-500/20"
-                : "bg-muted/50 hover:bg-muted text-muted-foreground border-muted-foreground/20"
+                : "bg-background/50 hover:bg-accent/50 text-muted-foreground border-border/50"
             )}
           >
             <Brain className={cn(

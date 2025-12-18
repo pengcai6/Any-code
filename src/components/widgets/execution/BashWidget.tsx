@@ -65,20 +65,22 @@ export const BashWidget: React.FC<BashWidgetProps> = ({
   return (
     <div className="space-y-2 w-full">
       {/* 紧凑型头部 */}
-      <div 
+      <div
         className="flex items-center justify-between bg-muted/30 p-2.5 rounded-md border border-border/50 cursor-pointer hover:bg-muted/50 transition-colors group/header select-none"
         onClick={() => result && setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <Terminal className="h-4 w-4 text-blue-500 flex-shrink-0" />
-            <span className="text-sm font-medium text-muted-foreground">Terminal</span>
+        <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+          {/* Terminal 标签 - 不允许换行和收缩 */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Terminal className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Terminal</span>
             <span className="text-muted-foreground/30">|</span>
-            <div className="flex items-center gap-1.5 min-w-0 text-sm">
-              <code className="font-mono text-foreground/90 font-medium truncate" title={command}>
-                {command}
-              </code>
-            </div>
+          </div>
+          {/* 命令内容 - 允许截断 */}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 text-sm overflow-hidden">
+            <code className="font-mono text-foreground/90 font-medium truncate" title={command}>
+              {command}
+            </code>
           </div>
 
           {/* 状态与描述 */}

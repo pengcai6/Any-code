@@ -77,9 +77,9 @@ export const GeminiModelSelector: React.FC<GeminiModelSelectorProps> = ({
       trigger={
         <Button
           variant="outline"
-          size="default"
+          size="sm"
           disabled={disabled}
-          className="gap-2 min-w-[180px] justify-start"
+          className="h-8 gap-2 min-w-[160px] justify-start border-border/50 bg-background/50 hover:bg-accent/50"
         >
           {selectedModelData.icon}
           <span className="flex-1 text-left">{selectedModelData.name}</span>

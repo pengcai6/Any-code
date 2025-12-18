@@ -270,20 +270,6 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
     });
   };
 
-  const handleCodexModelChange = (model: string) => {
-    onChange({
-      ...value,
-      codexModel: model,
-    });
-  };
-
-  const handleGeminiModelChange = (model: string) => {
-    onChange({
-      ...value,
-      geminiModel: model,
-    });
-  };
-
   const handleGeminiApprovalModeChange = (mode: 'auto_edit' | 'yolo' | 'default') => {
     onChange({
       ...value,
@@ -312,9 +298,10 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
       trigger={
         <Button
           variant="outline"
+          size="sm"
           role="combobox"
           aria-expanded={showSettings}
-          className={`justify-between ${className}`}
+          className={`h-8 justify-between border-border/50 bg-background/50 hover:bg-accent/50 ${className}`}
         >
           <div className="flex items-center gap-2">
             {value.engine === 'gemini' ? (

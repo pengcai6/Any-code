@@ -27,12 +27,14 @@ export const PlanModeToggle: React.FC<PlanModeToggleProps> = ({
         <TooltipTrigger asChild>
           <Button
             variant={isPlanMode ? "default" : "outline"}
-            size="default"
+            size="sm"
             onClick={onToggle}
             disabled={disabled}
             className={cn(
-              "gap-2 relative",
-              isPlanMode && "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white border-blue-600 dark:border-blue-500"
+              "h-8 gap-2 relative border-border/50",
+              isPlanMode
+                ? "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white border-blue-600 dark:border-blue-500"
+                : "bg-background/50 hover:bg-accent/50"
             )}
           >
             {/* Active indicator */}
