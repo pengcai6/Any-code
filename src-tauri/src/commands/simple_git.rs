@@ -159,33 +159,9 @@ pub fn git_commit_changes(project_path: &str, message: &str) -> Result<bool, Str
         ));
     }
 
-    // Check if there are staged changes (handles untracked even when status.showUntrackedFiles=no)
-    let mut diff_cmd = Command::new("git");
-    diff_cmd.args(["diff", "--cached", "--quiet"]);
-    diff_cmd.current_dir(project_path);
-
-    #[cfg(target_os = "windows")]
-    diff_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-
-    let diff_output = diff_cmd
-        .output()
-        .map_err(|e| format!("Failed to check staged changes: {}", e))?;
-
-    if diff_output.status.success() {
-        // No staged changes to commit
-        return Ok(false);
-    }
-
-    if diff_output.status.code() != Some(1) {
-        return Err(format!(
-            "Git diff --cached failed: {}",
-            String::from_utf8_lossy(&diff_output.stderr)
-        ));
-    }
-
-    // Commit changes
+    // Commit changes (always create a commit, even if empty)
     let mut commit_cmd = Command::new("git");
-    commit_cmd.args(["commit", "-m", message]);
+    commit_cmd.args(["commit", "--allow-empty", "-m", message]);
     commit_cmd.current_dir(project_path);
 
     #[cfg(target_os = "windows")]
