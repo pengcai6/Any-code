@@ -202,7 +202,16 @@
     "gitOpsCannotDo": "Cannot: Perform code rollback operations (Git reset/stash)",
     "gitOpsNote": "This means you will not be able to restore code to previous states through the rewind feature.",
     "gitOpsUseCase": "Use cases: Multi-person collaboration projects, production environments, or when you only need to manage conversation records.",
-    "confirmEnable": "Confirm Enable"
+    "confirmEnable": "Confirm Enable",
+    "noPlan": "(No plan content)",
+    "openDownloadFailed": "Failed to open download page",
+    "cannotOpenDownloadPage": "Cannot open download page, please manually visit GitHub Releases",
+    "autoUpdateUnavailable": "Auto-update unavailable, please use manual download",
+    "downloadInstallFailed": "Download and install failed, please try manual download",
+    "restartFailed": "Restart failed, please manually restart the application",
+    "loading": "Loading...",
+    "unknown": "Unknown",
+    "openProjectPageFailed": "Failed to open project page"
   },
   "tooltips": {
     "stopExecution": "Stop current execution",
@@ -1271,24 +1280,9 @@
     "enhancing": "Enhancing...",
     "enhancePrompt": "Enhance prompt"
   },
-  "deletedProjects": {
-    "restoreProject": "Restore project",
-    "permanentlyDelete": "Permanently delete"
-  },
   "updateBadge": {
     "newVersionAvailable": "New version available",
     "closeUpdateReminder": "Close update reminder"
-  },
-  "dialogs": {
-    "noPlan": "(No plan content)",
-    "openDownloadFailed": "Failed to open download page",
-    "cannotOpenDownloadPage": "Cannot open download page, please manually visit GitHub Releases",
-    "autoUpdateUnavailable": "Auto-update unavailable, please use manual download",
-    "downloadInstallFailed": "Download and install failed, please try manual download",
-    "restartFailed": "Restart failed, please manually restart the application",
-    "loading": "Loading...",
-    "unknown": "Unknown",
-    "openProjectPageFailed": "Failed to open project page"
   },
   "deletedProjects": {
     "title": "Deleted Projects",

@@ -202,7 +202,16 @@
     "gitOpsCannotDo": "无法执行：代码回滚操作（Git reset/stash）",
     "gitOpsNote": "这意味着您将无法通过撤回功能恢复代码到之前的状态。",
     "gitOpsUseCase": "适用场景：多人协作项目、生产环境、或只需管理对话记录的情况。",
-    "confirmEnable": "确定启用"
+    "confirmEnable": "确定启用",
+    "noPlan": "（无计划内容）",
+    "openDownloadFailed": "打开下载页面失败",
+    "cannotOpenDownloadPage": "无法打开下载页面，请手动访问 GitHub Releases",
+    "autoUpdateUnavailable": "自动更新不可用，请使用手动下载",
+    "downloadInstallFailed": "下载安装失败，请尝试手动下载",
+    "restartFailed": "重启失败，请手动重启应用",
+    "loading": "加载中...",
+    "unknown": "未知",
+    "openProjectPageFailed": "打开项目地址失败"
   },
   "tooltips": {
     "stopExecution": "停止当前执行",
@@ -1303,24 +1312,9 @@
     "enhancing": "优化中...",
     "enhancePrompt": "优化提示词"
   },
-  "deletedProjects": {
-    "restoreProject": "恢复项目",
-    "permanentlyDelete": "永久删除"
-  },
   "updateBadge": {
     "newVersionAvailable": "有新版本可用",
     "closeUpdateReminder": "关闭更新提醒"
-  },
-  "dialogs": {
-    "noPlan": "（无计划内容）",
-    "openDownloadFailed": "打开下载页面失败",
-    "cannotOpenDownloadPage": "无法打开下载页面，请手动访问 GitHub Releases",
-    "autoUpdateUnavailable": "自动更新不可用，请使用手动下载",
-    "downloadInstallFailed": "下载安装失败，请尝试手动下载",
-    "restartFailed": "重启失败，请手动重启应用",
-    "loading": "加载中...",
-    "unknown": "未知",
-    "openProjectPageFailed": "打开项目地址失败"
   },
   "deletedProjects": {
     "title": "已删除的项目",
