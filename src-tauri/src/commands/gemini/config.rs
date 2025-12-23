@@ -497,7 +497,10 @@ pub struct GeminiWslModeInfo {
     pub wsl_gemini_version: Option<String>,
     /// Is native Gemini available
     pub native_available: bool,
+    /// Whether the current platform is Windows (WSL options are only relevant on Windows)
+    pub is_windows: bool,
 }
+
 
 /// Get Gemini WSL mode configuration
 /// 使用全局缓存避免重复检测，减少 WSL 进程创建
@@ -536,6 +539,11 @@ fn do_get_gemini_wsl_mode_config() -> GeminiWslModeInfo {
         None
     };
 
+    #[cfg(target_os = "windows")]
+    let is_windows = true;
+    #[cfg(not(target_os = "windows"))]
+    let is_windows = false;
+
     GeminiWslModeInfo {
         mode: mode_str.to_string(),
         wsl_distro: config.wsl_distro.clone(),
@@ -545,8 +553,10 @@ fn do_get_gemini_wsl_mode_config() -> GeminiWslModeInfo {
         wsl_gemini_path: runtime.gemini_path_in_wsl.clone(),
         wsl_gemini_version,
         native_available,
+        is_windows,
     }
 }
+
 
 /// Set Gemini WSL mode configuration
 #[tauri::command]

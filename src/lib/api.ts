@@ -4,7 +4,7 @@ import { HooksManager } from '@/lib/hooksManager';
 import { codexProviderPresets } from '@/config/codexProviderPresets';
 
 /** Process type for tracking in ProcessRegistry */
-export type ProcessType = 
+export type ProcessType =
   | { AgentRun: { agent_id: number; agent_name: string } }
   | { ClaudeSession: { session_id: string } };
 
@@ -2062,12 +2062,12 @@ export const api = {
       .replace(/[^a-z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '');
-      
+
     const fullConfig: ProviderConfig = {
       ...config,
       id
     };
-    
+
     try {
       return await invoke<string>("add_provider_config", { config: fullConfig });
     } catch (error) {
@@ -3164,6 +3164,7 @@ export const api = {
     nativeAvailable: boolean;
     wslAvailable: boolean;
     availableDistros: string[];
+    isWindows: boolean;
   }> {
     try {
       return await invoke("get_codex_mode_config");
@@ -3214,6 +3215,7 @@ export const api = {
     wslGeminiPath: string | null;
     wslGeminiVersion: string | null;
     nativeAvailable: boolean;
+    isWindows: boolean;
   }> {
     try {
       return await invoke("get_gemini_wsl_mode_config");
@@ -3262,6 +3264,7 @@ export const api = {
     wslClaudeVersion: string | null;
     nativeAvailable: boolean;
     actualMode: 'native' | 'wsl';
+    isWindows: boolean;
   }> {
     try {
       return await invoke("get_claude_wsl_mode_config");

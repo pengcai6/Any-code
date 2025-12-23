@@ -58,6 +58,8 @@ pub struct CodexModeInfo {
     pub wsl_available: bool,
     /// List of available WSL distros
     pub available_distros: Vec<String>,
+    /// Whether the current platform is Windows (WSL options are only relevant on Windows)
+    pub is_windows: bool,
 }
 
 /// Codex provider configuration
@@ -894,17 +896,17 @@ fn do_get_codex_mode_config() -> CodexModeInfo {
 
     // Check availability
     #[cfg(target_os = "windows")]
-    let (native_available, wsl_available, available_distros) = {
+    let (native_available, wsl_available, available_distros, is_windows) = {
         let native = wsl_utils::is_native_codex_available();
         let distros = wsl_utils::get_wsl_distros();
         // 可用性检查需要与用户选择的 distro 保持一致，避免默认发行版导致的误判
         let wsl = !distros.is_empty()
             && wsl_utils::check_wsl_codex(config.wsl_distro.as_deref()).is_some();
-        (native, wsl, distros)
+        (native, wsl, distros, true)
     };
 
     #[cfg(not(target_os = "windows"))]
-    let (native_available, wsl_available, available_distros) = (true, false, vec![]);
+    let (native_available, wsl_available, available_distros, is_windows) = (true, false, vec![], false);
 
     let mode_str = match config.mode {
         wsl_utils::CodexMode::Auto => "auto",
@@ -921,8 +923,10 @@ fn do_get_codex_mode_config() -> CodexModeInfo {
         native_available,
         wsl_available,
         available_distros,
+        is_windows,
     }
 }
+
 
 /// Set Codex mode configuration
 #[tauri::command]

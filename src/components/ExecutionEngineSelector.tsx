@@ -51,6 +51,7 @@ interface CodexModeConfig {
   nativeAvailable: boolean;
   wslAvailable: boolean;
   availableDistros: string[];
+  isWindows: boolean;
 }
 
 // Gemini WSL mode configuration (similar to Codex)
@@ -65,6 +66,7 @@ interface GeminiWslModeConfig {
   wslGeminiPath: string | null;
   wslGeminiVersion: string | null;
   nativeAvailable: boolean;
+  isWindows: boolean;
 }
 
 // Claude WSL mode configuration
@@ -78,6 +80,7 @@ interface ClaudeWslModeConfig {
   wslClaudeVersion: string | null;
   nativeAvailable: boolean;
   actualMode: 'native' | 'wsl';
+  isWindows: boolean;
 }
 
 interface ExecutionEngineSelectorProps {
@@ -519,40 +522,44 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">
-                          <div>
-                            <div className="font-medium">自动检测</div>
-                            <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
-                          </div>
-                        </SelectItem>
+                        {codexModeConfig.isWindows && (
+                          <SelectItem value="auto">
+                            <div>
+                              <div className="font-medium">自动检测</div>
+                              <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
+                            </div>
+                          </SelectItem>
+                        )}
                         <SelectItem value="native" disabled={!codexModeConfig.nativeAvailable}>
                           <div className="flex items-center gap-2">
                             <Monitor className="h-3 w-3" />
                             <div>
-                              <div className="font-medium">Windows 原生</div>
+                              <div className="font-medium">{codexModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}</div>
                               <div className="text-xs text-muted-foreground">
-                                {codexModeConfig.nativeAvailable ? '使用 Windows 版 Codex' : '未安装'}
+                                {codexModeConfig.nativeAvailable ? (codexModeConfig.isWindows ? '使用 Windows 版 Codex' : '使用本机 Codex') : '未安装'}
                               </div>
                             </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="wsl" disabled={!codexModeConfig.wslAvailable}>
-                          <div className="flex items-center gap-2">
-                            <Terminal className="h-3 w-3" />
-                            <div>
-                              <div className="font-medium">WSL</div>
-                              <div className="text-xs text-muted-foreground">
-                                {codexModeConfig.wslAvailable ? '使用 WSL 中的 Codex' : '未安装'}
+                        {codexModeConfig.isWindows && (
+                          <SelectItem value="wsl" disabled={!codexModeConfig.wslAvailable}>
+                            <div className="flex items-center gap-2">
+                              <Terminal className="h-3 w-3" />
+                              <div>
+                                <div className="font-medium">WSL</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {codexModeConfig.wslAvailable ? '使用 WSL 中的 Codex' : '未安装'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </SelectItem>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* WSL Distro Selection */}
-                  {codexModeConfig.mode === 'wsl' && codexModeConfig.availableDistros.length > 0 && (
+                  {/* WSL Distro Selection (Windows only) */}
+                  {codexModeConfig.isWindows && codexModeConfig.mode === 'wsl' && codexModeConfig.availableDistros.length > 0 && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">WSL 发行版</Label>
                       <Select
@@ -590,7 +597,7 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         ) : (
                           <span className="flex items-center gap-1">
                             <Monitor className="h-3 w-3" />
-                            Windows 原生
+                            {codexModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}
                           </span>
                         )}
                       </span>
@@ -660,7 +667,7 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                       运行环境
                     </Label>
                     <Select
-                      value={geminiWslModeConfig.mode}
+                      value={geminiWslModeConfig.isWindows ? geminiWslModeConfig.mode : 'native'}
                       onValueChange={(v) => handleGeminiRuntimeModeChange(v as GeminiRuntimeMode)}
                       disabled={savingConfig}
                     >
@@ -668,40 +675,44 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">
-                          <div>
-                            <div className="font-medium">自动检测</div>
-                            <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
-                          </div>
-                        </SelectItem>
+                        {geminiWslModeConfig.isWindows && (
+                          <SelectItem value="auto">
+                            <div>
+                              <div className="font-medium">自动检测</div>
+                              <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
+                            </div>
+                          </SelectItem>
+                        )}
                         <SelectItem value="native" disabled={!geminiWslModeConfig.nativeAvailable}>
                           <div className="flex items-center gap-2">
                             <Monitor className="h-3 w-3" />
                             <div>
-                              <div className="font-medium">Windows 原生</div>
+                              <div className="font-medium">{geminiWslModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}</div>
                               <div className="text-xs text-muted-foreground">
-                                {geminiWslModeConfig.nativeAvailable ? '使用 Windows 版 Gemini' : '未安装'}
+                                {geminiWslModeConfig.nativeAvailable ? (geminiWslModeConfig.isWindows ? '使用 Windows 版 Gemini' : '使用本机 Gemini') : '未安装'}
                               </div>
                             </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="wsl" disabled={!geminiWslModeConfig.wslAvailable}>
-                          <div className="flex items-center gap-2">
-                            <Terminal className="h-3 w-3" />
-                            <div>
-                              <div className="font-medium">WSL</div>
-                              <div className="text-xs text-muted-foreground">
-                                {geminiWslModeConfig.wslAvailable ? '使用 WSL 中的 Gemini' : '未安装'}
+                        {geminiWslModeConfig.isWindows && (
+                          <SelectItem value="wsl" disabled={!geminiWslModeConfig.wslAvailable}>
+                            <div className="flex items-center gap-2">
+                              <Terminal className="h-3 w-3" />
+                              <div>
+                                <div className="font-medium">WSL</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {geminiWslModeConfig.wslAvailable ? '使用 WSL 中的 Gemini' : '未安装'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </SelectItem>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* WSL Distro Selection */}
-                  {geminiWslModeConfig.mode === 'wsl' && geminiWslModeConfig.availableDistros.length > 0 && (
+                  {/* WSL Distro Selection (Windows only) */}
+                  {geminiWslModeConfig.isWindows && geminiWslModeConfig.mode === 'wsl' && geminiWslModeConfig.availableDistros.length > 0 && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">WSL 发行版</Label>
                       <Select
@@ -742,7 +753,7 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         ) : (
                           <span className="flex items-center gap-1">
                             <Monitor className="h-3 w-3" />
-                            Windows 原生
+                            {geminiWslModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}
                           </span>
                         )}
                       </span>
@@ -777,7 +788,7 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                       运行环境
                     </Label>
                     <Select
-                      value={claudeWslModeConfig.mode}
+                      value={claudeWslModeConfig.isWindows ? claudeWslModeConfig.mode : 'native'}
                       onValueChange={(v) => handleClaudeRuntimeModeChange(v as ClaudeRuntimeMode)}
                       disabled={savingConfig}
                     >
@@ -785,40 +796,44 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">
-                          <div>
-                            <div className="font-medium">自动检测</div>
-                            <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
-                          </div>
-                        </SelectItem>
+                        {claudeWslModeConfig.isWindows && (
+                          <SelectItem value="auto">
+                            <div>
+                              <div className="font-medium">自动检测</div>
+                              <div className="text-xs text-muted-foreground">原生优先，WSL 后备</div>
+                            </div>
+                          </SelectItem>
+                        )}
                         <SelectItem value="native" disabled={!claudeWslModeConfig.nativeAvailable}>
                           <div className="flex items-center gap-2">
                             <Monitor className="h-3 w-3" />
                             <div>
-                              <div className="font-medium">Windows 原生</div>
+                              <div className="font-medium">{claudeWslModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}</div>
                               <div className="text-xs text-muted-foreground">
-                                {claudeWslModeConfig.nativeAvailable ? '使用 Windows 版 Claude' : '未安装'}
+                                {claudeWslModeConfig.nativeAvailable ? (claudeWslModeConfig.isWindows ? '使用 Windows 版 Claude' : '使用本机 Claude') : '未安装'}
                               </div>
                             </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="wsl" disabled={!claudeWslModeConfig.wslAvailable}>
-                          <div className="flex items-center gap-2">
-                            <Terminal className="h-3 w-3" />
-                            <div>
-                              <div className="font-medium">WSL</div>
-                              <div className="text-xs text-muted-foreground">
-                                {claudeWslModeConfig.wslAvailable ? '使用 WSL 中的 Claude' : '未安装'}
+                        {claudeWslModeConfig.isWindows && (
+                          <SelectItem value="wsl" disabled={!claudeWslModeConfig.wslAvailable}>
+                            <div className="flex items-center gap-2">
+                              <Terminal className="h-3 w-3" />
+                              <div>
+                                <div className="font-medium">WSL</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {claudeWslModeConfig.wslAvailable ? '使用 WSL 中的 Claude' : '未安装'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </SelectItem>
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* WSL Distro Selection */}
-                  {claudeWslModeConfig.mode === 'wsl' && claudeWslModeConfig.availableDistros.length > 0 && (
+                  {/* WSL Distro Selection (Windows only) */}
+                  {claudeWslModeConfig.isWindows && claudeWslModeConfig.mode === 'wsl' && claudeWslModeConfig.availableDistros.length > 0 && (
                     <div className="space-y-2">
                       <Label className="text-sm font-medium">WSL 发行版</Label>
                       <Select
@@ -859,7 +874,7 @@ export const ExecutionEngineSelector: React.FC<ExecutionEngineSelectorProps> = (
                         ) : (
                           <span className="flex items-center gap-1">
                             <Monitor className="h-3 w-3" />
-                            Windows 原生
+                            {claudeWslModeConfig.isWindows ? 'Windows 原生' : 'Linux 原生'}
                           </span>
                         )}
                       </span>

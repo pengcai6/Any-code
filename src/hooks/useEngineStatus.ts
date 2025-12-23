@@ -16,6 +16,7 @@ export interface CodexModeConfig {
   nativeAvailable: boolean;
   wslAvailable: boolean;
   availableDistros: string[];
+  isWindows: boolean;
 }
 
 export interface GeminiWslModeConfig {
@@ -27,6 +28,7 @@ export interface GeminiWslModeConfig {
   wslGeminiPath: string | null;
   wslGeminiVersion: string | null;
   nativeAvailable: boolean;
+  isWindows: boolean;
 }
 
 export interface ClaudeWslModeConfig {
@@ -39,6 +41,7 @@ export interface ClaudeWslModeConfig {
   wslClaudeVersion: string | null;
   nativeAvailable: boolean;
   actualMode: 'native' | 'wsl';
+  isWindows: boolean;
 }
 
 export interface EngineStatusInfo {
