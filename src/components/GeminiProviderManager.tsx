@@ -228,10 +228,23 @@ export default function GeminiProviderManager({ onBack }: GeminiProviderManagerP
       return currentConfig.selectedAuthType === 'oauth-personal' && !currentConfig.baseUrl;
     }
 
-    // 第三方供应商：通过 baseUrl 判断
+    // 第三方供应商：首先比较 baseUrl
     const configBaseUrl = extractBaseUrlFromEnv(config.env);
     const currentBaseUrl = currentConfig.baseUrl || '';
-    return configBaseUrl === currentBaseUrl && !!configBaseUrl;
+
+    if (configBaseUrl !== currentBaseUrl || !configBaseUrl) {
+      return false;
+    }
+
+    // 然后比较 apiKey（相同 baseUrl 但不同 apiKey 应该是不同的代理商）
+    const configApiKey = extractApiKeyFromEnv(config.env);
+    const currentApiKey = currentConfig.apiKey || '';
+
+    if (configApiKey && currentApiKey && configApiKey !== currentApiKey) {
+      return false;
+    }
+
+    return true;
   };
 
   // 判断是否为内置预设（不能删除）

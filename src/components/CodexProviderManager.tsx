@@ -223,14 +223,29 @@ export default function CodexProviderManager({ onBack }: CodexProviderManagerPro
   // 判断是否为当前使用的供应商
   const isCurrentProvider = (config: CodexProviderConfig): boolean => {
     if (!currentConfig) return false;
-    // 通过 baseUrl 判断（更可靠）
+
     const configBaseUrl = extractBaseUrlFromConfig(config.config);
     const currentBaseUrl = currentConfig.baseUrl || '';
-    // 官方供应商特殊处理
+
+    // 官方供应商特殊处理：没有 baseUrl 时认为是官方
     if (config.isOfficial && !currentBaseUrl) {
       return true;
     }
-    return configBaseUrl === currentBaseUrl;
+
+    // 首先比较 baseUrl
+    if (configBaseUrl !== currentBaseUrl) {
+      return false;
+    }
+
+    // 然后比较 apiKey（相同 baseUrl 但不同 apiKey 应该是不同的代理商）
+    const configApiKey = extractApiKeyFromAuth(config.auth);
+    const currentApiKey = currentConfig.apiKey || '';
+
+    if (configApiKey && currentApiKey && configApiKey !== currentApiKey) {
+      return false;
+    }
+
+    return !!configBaseUrl;
   };
 
   // 判断是否为内置预设（不能删除）
