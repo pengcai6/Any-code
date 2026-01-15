@@ -631,35 +631,38 @@ fn get_project_path_from_sessions(project_dir: &Path) -> Result<String, String> 
             if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("jsonl") {
                 if let Ok(file) = fs::File::open(&path) {
                     let reader = BufReader::new(file);
-                    if let Some(Ok(first_line)) = reader.lines().next() {
-                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&first_line) {
-                            if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
-                                let cleaned_cwd = cwd.replace("\\\\", "\\");
+                    // Read up to 10 lines to find cwd field
+                    for line_result in reader.lines().take(10) {
+                        if let Ok(line) = line_result {
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                                if let Some(cwd) = json.get("cwd").and_then(|v| v.as_str()) {
+                                    let cleaned_cwd = cwd.replace("\\\\", "\\");
 
-                                // On macOS, avoid canonicalize() as it resolves symlinks and can cause
-                                // path mismatches (e.g., /tmp -> /private/tmp, /var -> /private/var)
-                                // Also, canonicalize() fails if the path doesn't exist (project moved/deleted)
-                                #[cfg(target_os = "macos")]
-                                let normalized_cwd = normalize_macos_path(&cleaned_cwd);
+                                    // On macOS, avoid canonicalize() as it resolves symlinks and can cause
+                                    // path mismatches (e.g., /tmp -> /private/tmp, /var -> /private/var)
+                                    // Also, canonicalize() fails if the path doesn't exist (project moved/deleted)
+                                    #[cfg(target_os = "macos")]
+                                    let normalized_cwd = normalize_macos_path(&cleaned_cwd);
 
-                                #[cfg(target_os = "windows")]
-                                let normalized_cwd = Path::new(&cleaned_cwd)
-                                    .canonicalize()
-                                    .map(|p| {
-                                        let path_str = p.to_string_lossy().to_string();
-                                        // Remove Windows long path prefix (\\?\)
-                                        if path_str.starts_with("\\\\?\\") {
-                                            path_str[4..].to_string()
-                                        } else {
-                                            path_str
-                                        }
-                                    })
-                                    .unwrap_or_else(|_| cleaned_cwd.clone());
+                                    #[cfg(target_os = "windows")]
+                                    let normalized_cwd = Path::new(&cleaned_cwd)
+                                        .canonicalize()
+                                        .map(|p| {
+                                            let path_str = p.to_string_lossy().to_string();
+                                            // Remove Windows long path prefix (\\?\)
+                                            if path_str.starts_with("\\\\?\\") {
+                                                path_str[4..].to_string()
+                                            } else {
+                                                path_str
+                                            }
+                                        })
+                                        .unwrap_or_else(|_| cleaned_cwd.clone());
 
-                                #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-                                let normalized_cwd = cleaned_cwd.clone();
+                                    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+                                    let normalized_cwd = cleaned_cwd.clone();
 
-                                return Ok(normalized_cwd);
+                                    return Ok(normalized_cwd);
+                                }
                             }
                         }
                     }
