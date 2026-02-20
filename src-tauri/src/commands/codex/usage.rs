@@ -96,7 +96,26 @@ struct ModelPricing {
 fn get_codex_pricing(model: &str) -> ModelPricing {
     let normalized = model.to_lowercase();
 
-    // GPT-5.2 Codex (latest)
+    // GPT-5.3 Codex Spark (lightweight fast version)
+    if normalized.contains("5.3-codex-spark") || normalized.contains("5_3_codex_spark") {
+        return ModelPricing {
+            input: 1.50,
+            output: 12.00,
+            cache_read: 0.15,
+        };
+    }
+
+    // GPT-5.3 Codex (latest - February 2026)
+    if normalized.contains("5.3-codex") || normalized.contains("5_3_codex")
+        || normalized.contains("gpt-5.3") || normalized.contains("gpt5.3") {
+        return ModelPricing {
+            input: 2.00,
+            output: 16.00,
+            cache_read: 0.20,
+        };
+    }
+
+    // GPT-5.2 Codex
     if normalized.contains("5.2-codex") || normalized.contains("5_2_codex") {
         return ModelPricing {
             input: 1.75,

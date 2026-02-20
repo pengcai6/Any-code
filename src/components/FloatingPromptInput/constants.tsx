@@ -7,20 +7,20 @@ import { ModelConfig, ThinkingModeConfig } from "./types";
 export const MODELS: ModelConfig[] = [
   {
     id: "sonnet",
-    name: "Claude 4.5 Sonnet",
-    description: "Faster, efficient for most tasks",
+    name: "Claude Sonnet 4.6",
+    description: "Fast and efficient for most coding tasks",
     icon: <Zap className="h-4 w-4" />
   },
   {
     id: "sonnet1m",
-    name: "Claude 4.5 Sonnet 1M",
+    name: "Claude Sonnet 4.6 1M",
     description: "Sonnet with 1 million token context",
     icon: <Brain className="h-4 w-4" />
   },
   {
     id: "opus",
-    name: "Claude 4.5 Opus",
-    description: "Latest model with enhanced coding & reasoning capabilities",
+    name: "Claude Opus 4.6",
+    description: "Most capable model with advanced reasoning & coding",
     icon: <Sparkles className="h-4 w-4" />
   }
 ];

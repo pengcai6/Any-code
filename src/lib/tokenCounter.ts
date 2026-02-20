@@ -4,7 +4,7 @@
  * 基于Claude官方Token Count API的准确token计算服务
  * 支持所有消息类型和Claude模型的精确token统计和成本计算
  *
- * 2025年最新官方定价和Claude 4系列模型支持
+ * 2026年最新官方定价和Claude 4.6系列模型支持
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -15,11 +15,24 @@ import { api } from './api';
 // ⚠️ WARNING: This pricing table MUST be kept in sync with:
 //    src-tauri/src/commands/usage.rs::ModelPricing
 // Source: https://docs.claude.com/en/docs/about-claude/models/overview
-// Last Updated: January 2025
+// Last Updated: February 2026
 // ============================================================================
 
 export const CLAUDE_PRICING = {
-  // Claude 4.5 Series (Latest - December 2025)
+  // Claude 4.6 Series (Latest - February 2026)
+  'claude-opus-4-6': {
+    input: 15.0,
+    output: 75.0,
+    cache_write: 18.75,
+    cache_read: 1.50,
+  },
+  'claude-sonnet-4-6': {
+    input: 3.0,
+    output: 15.0,
+    cache_write: 3.75,
+    cache_read: 0.30,
+  },
+  // Claude 4.5 Series
   'claude-opus-4-5': {
     input: 5.0,
     output: 25.0,
@@ -69,7 +82,7 @@ export const CLAUDE_PRICING = {
     cache_write: 18.75,
     cache_read: 1.50,
   },
-  // 默认值 (使用最新 Sonnet 4.5 定价)
+  // 默认值 (使用最新 Sonnet 4.6 定价)
   'default': {
     input: 3.0,
     output: 15.0,
@@ -86,6 +99,9 @@ export const CLAUDE_PRICING = {
 // ============================================================================
 
 export const CLAUDE_CONTEXT_WINDOWS = {
+  // Claude 4.6 Series
+  'claude-opus-4-6': 200000,
+  'claude-sonnet-4-6': 200000,
   // Claude 4.5 Series
   'claude-opus-4-5': 200000,
   'claude-opus-4-5-20251101': 200000,
@@ -106,26 +122,23 @@ export const CLAUDE_CONTEXT_WINDOWS = {
 // ============================================================================
 
 export const CODEX_CONTEXT_WINDOWS = {
-  // GPT-5.1-Codex 系列 - Codex CLI 主要使用的模型
-  // 272K context window
+  // GPT-5.3-Codex 系列 - 最新代码模型（2026年2月发布）
+  // 400K context window, 128K max output
+  'gpt-5.3-codex': 400000,
+  'gpt-5.3-codex-spark': 400000,
+  // GPT-5.2 系列
+  'gpt-5.2': 272000,
+  'gpt-5.2-codex': 272000,
+  // GPT-5.1-Codex 系列
   'gpt-5.1-codex': 272000,
   'gpt-5.1-codex-mini': 272000,
   'gpt-5.1-codex-max': 272000,
   'gpt-5-codex': 272000,
-  // codex-mini-latest - 默认 Codex CLI 模型
-  // 272K context window
   'codex-mini-latest': 272000,
-  // GPT-5.2 系列 - 最新模型
-  // 272K context, 128K max output
-  'gpt-5.2': 272000,
-  'gpt-5.2-codex': 272000,  // 🆕 GPT-5.2-Codex（2025年12月18日发布）
-  'gpt-5.2-instant': 272000,
-  'gpt-5.2-thinking': 272000,
-  'gpt-5.2-pro': 272000,
   // o4-mini (Codex 底层模型)
   'o4-mini': 128000,
-  // 默认值 - 使用 codex-mini-latest 的窗口大小
-  'default': 272000,
+  // 默认值
+  'default': 400000,
 } as const;
 
 // ============================================================================
@@ -135,8 +148,10 @@ export const CODEX_CONTEXT_WINDOWS = {
 // ============================================================================
 
 export const GEMINI_CONTEXT_WINDOWS = {
+  'gemini-3.1-pro-preview': 2_000_000,
   'gemini-3-pro-preview': 1_000_000,
   'gemini-3-pro-image-preview': 1_000_000,
+  'gemini-3-flash': 1_000_000,
   'gemini-2.5-pro': 1_000_000,
   'gemini-2.5-flash': 1_000_000,
   'gemini-2.5-flash-lite': 1_000_000,
@@ -188,6 +203,17 @@ export function getContextWindowSize(model?: string, engine?: string): number {
       return CODEX_CONTEXT_WINDOWS[lowerModel as keyof typeof CODEX_CONTEXT_WINDOWS];
     }
 
+    // GPT-5.3-Codex 系列（最新）
+    if (lowerModel.includes('5.3-codex-spark') || lowerModel.includes('5_3_codex_spark')) {
+      return CODEX_CONTEXT_WINDOWS['gpt-5.3-codex-spark'];
+    }
+    if (lowerModel.includes('5.3-codex') || lowerModel.includes('5_3_codex')) {
+      return CODEX_CONTEXT_WINDOWS['gpt-5.3-codex'];
+    }
+    if (lowerModel.includes('gpt-5.3') || lowerModel.includes('gpt_5_3')) {
+      return CODEX_CONTEXT_WINDOWS['gpt-5.3-codex'];
+    }
+
     // GPT-5.1-Codex 系列
     if (lowerModel.includes('5.1-codex-max') || lowerModel.includes('5_1_codex_max')) {
       return CODEX_CONTEXT_WINDOWS['gpt-5.1-codex-max'];
@@ -199,19 +225,9 @@ export function getContextWindowSize(model?: string, engine?: string): number {
       return CODEX_CONTEXT_WINDOWS['gpt-5.1-codex'];
     }
 
-    // GPT-5.2 系列 (Codex, Instant, Thinking, Pro variants)
-    // GPT-5.2-Codex 优先匹配（最新代码模型）
+    // GPT-5.2 系列
     if (lowerModel.includes('5.2-codex') || lowerModel.includes('5_2_codex')) {
       return CODEX_CONTEXT_WINDOWS['gpt-5.2-codex'];
-    }
-    if (lowerModel.includes('5.2-pro') || lowerModel.includes('5_2_pro')) {
-      return CODEX_CONTEXT_WINDOWS['gpt-5.2-pro'];
-    }
-    if (lowerModel.includes('5.2-thinking') || lowerModel.includes('5_2_thinking')) {
-      return CODEX_CONTEXT_WINDOWS['gpt-5.2-thinking'];
-    }
-    if (lowerModel.includes('5.2-instant') || lowerModel.includes('5_2_instant')) {
-      return CODEX_CONTEXT_WINDOWS['gpt-5.2-instant'];
     }
     if (lowerModel.includes('gpt-5.2') || lowerModel.includes('gpt_5_2') || lowerModel.includes('5.2')) {
       return CODEX_CONTEXT_WINDOWS['gpt-5.2'];
@@ -259,12 +275,16 @@ export function getContextWindowSize(model?: string, engine?: string): number {
 
 // 标准化模型名称映射
 export const MODEL_ALIASES = {
-  'opus': 'claude-opus-4-5', // 默认最新版本
+  'opus': 'claude-opus-4-6', // 默认最新版本
+  'opus4.6': 'claude-opus-4-6',
+  'opus-4.6': 'claude-opus-4-6',
   'opus4.5': 'claude-opus-4-5',
   'opus-4.5': 'claude-opus-4-5',
   'opus4.1': 'claude-opus-4-1',
   'opus-4.1': 'claude-opus-4-1',
-  'sonnet': 'claude-sonnet-4-5', // 默认最新版本
+  'sonnet': 'claude-sonnet-4-6', // 默认最新版本
+  'sonnet4.6': 'claude-sonnet-4-6',
+  'sonnet-4.6': 'claude-sonnet-4-6',
   'sonnet4.5': 'claude-sonnet-4-5',
   'sonnet-4.5': 'claude-sonnet-4-5',
   'haiku': 'claude-haiku-4-5', // 默认最新版本
@@ -417,7 +437,7 @@ export class TokenCounterService {
    * model identification and pricing across frontend and backend.
    */
   public normalizeModel(model?: string): string {
-    if (!model) return 'claude-sonnet-4-5-20250929';
+    if (!model) return 'claude-sonnet-4-6';
 
     // Normalize: lowercase + remove common prefixes/suffixes
     let normalized = model.toLowerCase();
@@ -432,7 +452,15 @@ export class TokenCounterService {
 
     // Priority-based matching (order matters! MUST match backend logic)
 
-    // Claude 4.5 Series (Latest)
+    // Claude 4.6 Series (Latest)
+    if (normalized.includes('opus') && (normalized.includes('4.6') || normalized.includes('4-6'))) {
+      return 'claude-opus-4-6';
+    }
+    if (normalized.includes('sonnet') && (normalized.includes('4.6') || normalized.includes('4-6'))) {
+      return 'claude-sonnet-4-6';
+    }
+
+    // Claude 4.5 Series
     if (normalized.includes('opus') && (normalized.includes('4.5') || normalized.includes('4-5'))) {
       return 'claude-opus-4-5';
     }
@@ -453,10 +481,10 @@ export class TokenCounterService {
       return 'claude-haiku-4-5'; // Default to latest
     }
     if (normalized.includes('opus')) {
-      return 'claude-opus-4-5'; // Default to latest
+      return 'claude-opus-4-6'; // Default to latest
     }
     if (normalized.includes('sonnet')) {
-      return 'claude-sonnet-4-5'; // Default to latest
+      return 'claude-sonnet-4-6'; // Default to latest
     }
 
     // Unknown model - return original

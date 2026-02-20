@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronUp, Check, Star, Brain, Cpu, Rocket } from "lucide-react";
+import { ChevronUp, Check, Star, Brain, Cpu, Rocket, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,29 +16,29 @@ export interface CodexModelConfig {
 }
 
 /**
- * Codex models (GPT-5.1 series, GPT-5.1-Codex series, GPT-5.2 series)
- * Updated: December 2025
+ * Codex models (GPT-5.3, GPT-5.2, GPT-5.1 series)
+ * Updated: February 2026
  */
 export const CODEX_MODELS: CodexModelConfig[] = [
   {
-    id: 'gpt-5.2-codex',
-    name: 'GPT-5.2 Codex',
-    description: '最新代码模型（2025年12月18日发布）',
+    id: 'gpt-5.3-codex',
+    name: 'GPT-5.3 Codex',
+    description: '最新代码模型，比 5.2 快 25%（2026年2月发布）',
     icon: <Rocket className="h-4 w-4 text-emerald-500" />,
     isDefault: true,
   },
   {
-    id: 'gpt-5.2',
-    name: 'GPT-5.2',
-    description: '最新旗舰模型（2025年12月）',
-    icon: <Star className="h-4 w-4 text-yellow-500" />,
+    id: 'gpt-5.3-codex-spark',
+    name: 'GPT-5.3 Codex Spark',
+    description: '轻量快速版，Cerebras WSE-3 芯片加速',
+    icon: <Zap className="h-4 w-4 text-amber-500" />,
     isDefault: false,
   },
   {
-    id: 'gpt-5.1-codex-max',
-    name: 'GPT-5.1 Codex Max',
-    description: '代码编写优化，速度与质量平衡',
-    icon: <Rocket className="h-4 w-4 text-green-500" />,
+    id: 'gpt-5.2-codex',
+    name: 'GPT-5.2 Codex',
+    description: '上一代代码模型（2025年12月）',
+    icon: <Star className="h-4 w-4 text-yellow-500" />,
     isDefault: false,
   },
   {

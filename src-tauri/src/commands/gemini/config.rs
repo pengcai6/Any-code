@@ -151,22 +151,29 @@ pub async fn update_gemini_config(config: GeminiConfig) -> Result<(), String> {
     save_gemini_config(&config)
 }
 
-/// Get available Gemini models (Gemini 3 series only)
-/// Updated: December 2025
+/// Get available Gemini models (Gemini 3.1 / 3 series)
+/// Updated: February 2026
 #[tauri::command]
 pub async fn get_gemini_models() -> Result<Vec<GeminiModelInfo>, String> {
     Ok(vec![
         GeminiModelInfo {
+            id: "gemini-3.1-pro-preview".to_string(),
+            name: "Gemini 3.1 Pro (Preview)".to_string(),
+            description: "Latest flagship model with 2M context (February 2026)".to_string(),
+            context_window: 2_000_000,
+            is_default: false,
+        },
+        GeminiModelInfo {
             id: "gemini-3-flash".to_string(),
             name: "Gemini 3 Flash".to_string(),
-            description: "Latest and fastest model (December 17, 2025)".to_string(),
+            description: "Fastest model for everyday coding".to_string(),
             context_window: 1_000_000,
             is_default: true,
         },
         GeminiModelInfo {
             id: "gemini-3-pro".to_string(),
             name: "Gemini 3 Pro".to_string(),
-            description: "Most capable reasoning and coding model".to_string(),
+            description: "Strong reasoning and coding capabilities".to_string(),
             context_window: 1_000_000,
             is_default: false,
         },

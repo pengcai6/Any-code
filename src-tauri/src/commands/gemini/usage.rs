@@ -95,6 +95,16 @@ struct ModelPricing {
 fn get_gemini_pricing(model: &str) -> ModelPricing {
     let normalized = model.to_lowercase();
 
+    // Gemini 3.1 Pro Preview (Latest - February 2026)
+    if normalized.contains("gemini-3.1-pro") || normalized.contains("gemini_3_1_pro")
+        || normalized.contains("3.1-pro") {
+        return ModelPricing {
+            input: 2.50,
+            output: 15.00,
+            cache_read: 0.25,
+        };
+    }
+
     // Gemini 3 Pro Preview
     if normalized.contains("gemini-3-pro") || normalized.contains("gemini_3_pro") {
         return ModelPricing {

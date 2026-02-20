@@ -69,7 +69,7 @@ pub struct ProjectUsage {
 // ============================================================================
 // Claude Model Pricing - Single Source of Truth
 // Source: https://platform.claude.com/docs/en/about-claude/pricing
-// Last Updated: December 2025
+// Last Updated: February 2026
 // ============================================================================
 
 /// Model pricing structure (prices per million tokens)
@@ -84,6 +84,8 @@ struct ModelPricing {
 /// Model family enumeration for categorization
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ModelFamily {
+    Opus46,   // Claude 4.6 Opus
+    Sonnet46, // Claude 4.6 Sonnet
     Opus45,   // Claude 4.5 Opus
     Opus41,   // Claude 4.1 Opus
     Sonnet45, // Claude 4.5 Sonnet
@@ -95,7 +97,20 @@ impl ModelPricing {
     /// Get pricing for a specific model family
     const fn for_family(family: ModelFamily) -> Self {
         match family {
-            // Claude 4.5 Series (Latest - December 2025)
+            // Claude 4.6 Series (Latest - February 2026)
+            ModelFamily::Opus46 => ModelPricing {
+                input: 15.0,
+                output: 75.0,
+                cache_write: 18.75,
+                cache_read: 1.50,
+            },
+            ModelFamily::Sonnet46 => ModelPricing {
+                input: 3.0,
+                output: 15.0,
+                cache_write: 3.75,
+                cache_read: 0.30,
+            },
+            // Claude 4.5 Series
             ModelFamily::Opus45 => ModelPricing {
                 input: 5.0,
                 output: 25.0,
@@ -153,6 +168,14 @@ fn parse_model_family(model: &str) -> ModelFamily {
     // Priority-based matching (order matters!)
     // Check for specific model families in order from most to least specific
 
+    // Claude 4.6 Series (Latest)
+    if normalized.contains("opus") && (normalized.contains("4.6") || normalized.contains("4-6")) {
+        return ModelFamily::Opus46;
+    }
+    if normalized.contains("sonnet") && (normalized.contains("4.6") || normalized.contains("4-6")) {
+        return ModelFamily::Sonnet46;
+    }
+
     // Claude 4.5 Series (Latest)
     if normalized.contains("opus") && (normalized.contains("4.5") || normalized.contains("4-5")) {
         return ModelFamily::Opus45;
@@ -174,10 +197,10 @@ fn parse_model_family(model: &str) -> ModelFamily {
         return ModelFamily::Haiku45; // Default to latest Haiku
     }
     if normalized.contains("opus") {
-        return ModelFamily::Opus45; // Default to latest Opus
+        return ModelFamily::Opus46; // Default to latest Opus
     }
     if normalized.contains("sonnet") {
-        return ModelFamily::Sonnet45; // Default to latest Sonnet
+        return ModelFamily::Sonnet46; // Default to latest Sonnet
     }
 
     ModelFamily::Unknown

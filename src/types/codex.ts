@@ -143,7 +143,7 @@ export interface CodexExecutionOptions {
   /** Execution mode (default: read-only) */
   mode?: CodexExecutionMode;
 
-  /** Model to use (e.g., gpt-5.1-codex-max) */
+  /** Model to use (e.g., gpt-5.3-codex) */
   model?: string;
 
   /** Enable JSON output mode */

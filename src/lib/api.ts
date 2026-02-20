@@ -723,7 +723,7 @@ export const api = {
           project_id: projectId,
           project_path: cs.projectPath,
           created_at: cs.createdAt,
-          model: cs.model || 'gpt-5.1-codex-max',
+          model: cs.model || 'gpt-5.3-codex',
           engine: 'codex' as const,
           // 🆕 Use actual first message from JSONL file
           first_message: cs.firstMessage || `Codex Session`,

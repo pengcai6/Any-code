@@ -137,6 +137,8 @@
     "failed": "失败",
     "cancelled": "已取消",
     "model": {
+      "claude46Sonnet": "Claude Sonnet 4.6",
+      "claude46Opus": "Claude Opus 4.6",
       "claude45Sonnet": "Claude 4.5 Sonnet",
       "claude41Opus": "Claude 4.1 Opus"
     }
@@ -250,6 +252,8 @@
     "saving": "保存中...",
     "save": "保存",
     "model": "模型",
+    "claude46Sonnet": "Claude Sonnet 4.6",
+    "claude46Opus": "Claude Opus 4.6",
     "claude45Sonnet": "Claude 4.5 Sonnet",
     "claude41Opus": "Claude 4.1 Opus",
     "fasterEfficient": "更快，适用于大多数任务",

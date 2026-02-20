@@ -137,6 +137,8 @@
     "failed": "Failed",
     "cancelled": "Cancelled",
     "model": {
+      "claude46Sonnet": "Claude Sonnet 4.6",
+      "claude46Opus": "Claude Opus 4.6",
       "claude45Sonnet": "Claude 4.5 Sonnet",
       "claude41Opus": "Claude 4.1 Opus"
     }
@@ -250,6 +252,8 @@
     "saving": "Saving...",
     "save": "Save",
     "model": "Model",
+    "claude46Sonnet": "Claude Sonnet 4.6",
+    "claude46Opus": "Claude Opus 4.6",
     "claude45Sonnet": "Claude 4.5 Sonnet",
     "claude41Opus": "Claude 4.1 Opus",
     "fasterEfficient": "Faster, suitable for most tasks",

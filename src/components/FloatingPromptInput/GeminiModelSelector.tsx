@@ -16,21 +16,28 @@ export interface GeminiModelConfig {
 }
 
 /**
- * Gemini models (Gemini 3 series only)
- * Updated: December 2025
+ * Gemini models (Gemini 3.1, 3 series)
+ * Updated: February 2026
  */
 export const GEMINI_MODELS: GeminiModelConfig[] = [
   {
+    id: 'gemini-3.1-pro-preview',
+    name: 'Gemini 3.1 Pro (Preview)',
+    description: '最新旗舰模型，2M 上下文（2026年2月）',
+    icon: <Star className="h-4 w-4 text-amber-500" />,
+    isDefault: false,
+  },
+  {
     id: 'gemini-3-flash',
     name: 'Gemini 3 Flash',
-    description: '最新最快模型（2025年12月17日）',
+    description: '最快模型，适合日常编码',
     icon: <Gauge className="h-4 w-4 text-yellow-500" />,
     isDefault: true,
   },
   {
     id: 'gemini-3-pro',
     name: 'Gemini 3 Pro',
-    description: '最强推理和编码能力',
+    description: '强推理和编码能力',
     icon: <Sparkles className="h-4 w-4 text-blue-500" />,
     isDefault: false,
   },
