@@ -1,18 +1,13 @@
 /**
  * Task Management Widgets - Claude Code 任务管理工具
  *
- * 核心组件：TaskListAggregateWidget
- * 通过 useMessagesContext 扫描所有消息，从 TaskCreate/TaskUpdate 的
- * tool_use (assistant消息) 和 tool_result (user消息) 中重建完整任务列表
- *
- * 数据流：
- * - assistant 消息 content[]: { type: "tool_use", name: "TaskCreate", id: "tooluse_xxx", input: { subject, description } }
- * - user 消息 content[]: { type: "tool_result", tool_use_id: "tooluse_xxx", content: "Task #1 created..." }
- * - user 消息顶层: toolUseResult: { task: { id: "1", subject: "..." } }
+ * 每个消息只渲染当前消息中的 TaskCreate/TaskUpdate 操作
+ * 通过扫描所有消息构建 taskId→subject 查找表
+ * 使 TaskUpdate 能显示任务标题
  */
 
 import React from "react";
-import { CheckCircle2, Clock, Circle, Trash2, ListTodo } from "lucide-react";
+import { CheckCircle2, Clock, Circle, Trash2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useMessagesContext } from "@/contexts/MessagesContext";
@@ -31,117 +26,49 @@ const statusLabels: Record<string, string> = {
   deleted: "已删除",
 };
 
-interface TaskItem {
-  id: string;
-  subject: string;
-  status: string;
-  description?: string;
-}
+/**
+ * 从所有消息中构建 taskId → subject 查找表
+ */
+function buildTaskSubjectLookup(messages: any[]): Map<string, string> {
+  const lookup = new Map<string, string>();
+  const toolUseInputs = new Map<string, string>();
 
-// ============================================================================
-// 从所有消息中重建任务列表
-// ============================================================================
-
-function buildTaskListFromMessages(messages: any[]): TaskItem[] {
-  const tasks = new Map<string, TaskItem>();
-  // toolUseId → { subject, description } 映射（从 assistant 的 tool_use 中提取）
-  const toolUseInputs = new Map<string, { subject: string; description?: string }>();
-  // 暂存 TaskUpdate 操作，第二遍再应用
-  const pendingUpdates: Array<{ taskId: string; status?: string; subject?: string }> = [];
-
-  // === 第一遍：收集 TaskCreate inputs + tool_results，建立任务 ===
   for (const msg of messages) {
     const content = msg?.message?.content;
     if (!Array.isArray(content)) continue;
 
     for (const block of content) {
-      // 从 assistant 消息中提取 TaskCreate 的 input
+      // 从 TaskCreate tool_use 中收集 subject
       if (block.type === 'tool_use' && /^TaskCreate$/i.test(block.name)) {
-        const input = block.input || {};
-        if (input.subject) {
-          toolUseInputs.set(block.id, {
-            subject: input.subject,
-            description: input.description,
-          });
-        }
+        const subject = block.input?.subject;
+        if (subject) toolUseInputs.set(block.id, subject);
       }
 
-      // 暂存 TaskUpdate 操作
-      if (block.type === 'tool_use' && /^TaskUpdate$/i.test(block.name)) {
-        const input = block.input || {};
-        const taskId = input.taskId ? String(input.taskId) : '';
-        if (taskId) {
-          pendingUpdates.push({
-            taskId,
-            status: input.status,
-            subject: input.subject,
-          });
-        }
-      }
-
-      // 从 user 消息的 tool_result 中提取 taskId，建立任务
+      // 从 tool_result 中提取 taskId 并关联 subject
       if (block.type === 'tool_result' && block.tool_use_id) {
-        const toolUseId = block.tool_use_id;
-        const inputData = toolUseInputs.get(toolUseId);
-        if (inputData) {
-          let taskId: string | null = null;
+        const subject = toolUseInputs.get(block.tool_use_id);
+        if (subject) {
+          // 从 content 提取 taskId
           const contentStr = typeof block.content === 'string' ? block.content : '';
           const match = contentStr.match(/#(\d+)/);
-          if (match) taskId = match[1];
+          let taskId = match ? match[1] : null;
 
+          // 从 toolUseResult 提取
           if (!taskId && msg.toolUseResult?.task?.id) {
             taskId = String(msg.toolUseResult.task.id);
           }
 
-          if (taskId) {
-            tasks.set(taskId, {
-              id: taskId,
-              subject: inputData.subject,
-              status: 'pending',
-              description: inputData.description,
-            });
-            toolUseInputs.delete(toolUseId);
-          }
+          if (taskId) lookup.set(taskId, subject);
         }
       }
     }
   }
 
-  // 处理没有匹配到 tool_result 的 TaskCreate（还在执行中）
-  let autoId = tasks.size > 0
-    ? Math.max(...Array.from(tasks.keys()).map(Number).filter(n => !isNaN(n))) + 1
-    : 1;
-  for (const [, inputData] of toolUseInputs) {
-    tasks.set(String(autoId), {
-      id: String(autoId),
-      subject: inputData.subject,
-      status: 'pending',
-      description: inputData.description,
-    });
-    autoId++;
-  }
-
-  // === 第二遍：应用 TaskUpdate 操作 ===
-  for (const update of pendingUpdates) {
-    const existing = tasks.get(update.taskId);
-    if (existing) {
-      if (update.status) existing.status = update.status;
-      if (update.subject) existing.subject = update.subject;
-    } else {
-      tasks.set(update.taskId, {
-        id: update.taskId,
-        subject: update.subject || `任务 #${update.taskId}`,
-        status: update.status || 'pending',
-      });
-    }
-  }
-
-  return Array.from(tasks.values())
-    .sort((a, b) => Number(a.id) - Number(b.id));
+  return lookup;
 }
 
 // ============================================================================
-// 导出类型（兼容 ToolCallsGroup）
+// 导出类型
 // ============================================================================
 
 export interface TaskToolCall {
@@ -155,71 +82,120 @@ export interface TaskListAggregateWidgetProps {
   toolCalls: TaskToolCall[];
 }
 
-export const TaskListAggregateWidget: React.FC<TaskListAggregateWidgetProps> = () => {
+/**
+ * 聚合渲染当前消息中的 TaskCreate/TaskUpdate 操作
+ * 每个操作渲染为一行，TaskUpdate 通过 lookup 显示任务标题
+ */
+export const TaskListAggregateWidget: React.FC<TaskListAggregateWidgetProps> = ({
+  toolCalls,
+}) => {
   const { messages } = useMessagesContext();
-
-  const tasks = React.useMemo(
-    () => buildTaskListFromMessages(messages),
-    [messages]
-  );
-
-  const completedCount = tasks.filter(t => t.status === 'completed').length;
-  const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
-  const totalCount = tasks.length;
-
-  if (totalCount === 0) return null;
+  const lookup = React.useMemo(() => buildTaskSubjectLookup(messages), [messages]);
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <ListTodo className="h-4 w-4 text-primary" />
-        <span className="text-sm font-medium">任务列表</span>
-        <Badge variant="outline" className="text-xs">
-          {completedCount}/{totalCount}
-        </Badge>
-        {inProgressCount > 0 && (
-          <Badge variant="outline" className="text-xs bg-info/10 text-info border-info/20">
-            {inProgressCount} 进行中
-          </Badge>
-        )}
-      </div>
-      <div className="space-y-1">
-        {tasks.map((task) => (
-          <div
-            key={task.id}
-            className={cn(
-              "flex items-start gap-2.5 px-3 py-2 rounded-md border bg-card/50",
-              task.status === "completed" && "opacity-60",
-              task.status === "deleted" && "opacity-40"
-            )}
-          >
-            <div className="mt-0.5 shrink-0">
-              {statusIcons[task.status] || statusIcons.pending}
+    <div className="space-y-1">
+      {toolCalls.map((tc, idx) => {
+        if (/^TaskCreate$/i.test(tc.name)) {
+          return (
+            <TaskCreateRow
+              key={tc.id || idx}
+              subject={tc.input?.subject}
+              description={tc.input?.description}
+            />
+          );
+        }
+        if (/^TaskUpdate$/i.test(tc.name)) {
+          const taskId = tc.input?.taskId ? String(tc.input.taskId) : '';
+          const subject = tc.input?.subject || lookup.get(taskId);
+          return (
+            <TaskUpdateRow
+              key={tc.id || idx}
+              taskId={taskId}
+              status={tc.input?.status}
+              subject={subject}
+            />
+          );
+        }
+        if (/^TaskList$/i.test(tc.name)) {
+          return (
+            <div key={tc.id || idx} className="flex items-center gap-2 py-0.5 text-xs text-muted-foreground">
+              <Circle className="h-3 w-3" />
+              <span>查看任务列表</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                "text-sm leading-snug",
-                task.status === "completed" && "line-through text-muted-foreground"
-              )}>
-                {task.subject}
-              </p>
-              {task.description && task.status === 'pending' && (
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                  {task.description}
-                </p>
-              )}
+          );
+        }
+        if (/^TaskGet$/i.test(tc.name)) {
+          return (
+            <div key={tc.id || idx} className="flex items-center gap-2 py-0.5 text-xs text-muted-foreground">
+              <Circle className="h-3 w-3" />
+              <span>查看任务 #{tc.input?.taskId}</span>
             </div>
-            <span className={cn(
-              "text-xs shrink-0 mt-0.5",
-              task.status === "completed" ? "text-success" :
-              task.status === "in_progress" ? "text-info" :
-              "text-muted-foreground"
-            )}>
-              {statusLabels[task.status] || task.status}
-            </span>
-          </div>
-        ))}
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+};
+
+// ============================================================================
+// TaskCreate 行
+// ============================================================================
+
+const TaskCreateRow: React.FC<{ subject?: string; description?: string }> = ({
+  subject,
+  description,
+}) => (
+  <div className="flex items-start gap-2.5 px-3 py-2 rounded-md border bg-card/50">
+    <div className="mt-0.5 shrink-0">
+      <Plus className="h-4 w-4 text-primary" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-sm leading-snug">{subject || '新任务'}</p>
+      {description && (
+        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{description}</p>
+      )}
+    </div>
+    <Badge variant="outline" className="text-xs shrink-0 bg-muted/10 text-muted-foreground border-muted/20">
+      {statusLabels.pending}
+    </Badge>
+  </div>
+);
+
+// ============================================================================
+// TaskUpdate 行
+// ============================================================================
+
+const TaskUpdateRow: React.FC<{ taskId: string; status?: string; subject?: string }> = ({
+  taskId,
+  status,
+  subject,
+}) => {
+  const displayStatus = status || 'pending';
+  return (
+    <div className={cn(
+      "flex items-start gap-2.5 px-3 py-2 rounded-md border bg-card/50",
+      displayStatus === "completed" && "opacity-70",
+    )}>
+      <div className="mt-0.5 shrink-0">
+        {statusIcons[displayStatus] || statusIcons.pending}
       </div>
+      <div className="flex-1 min-w-0">
+        <p className={cn(
+          "text-sm leading-snug",
+          displayStatus === "completed" && "line-through text-muted-foreground"
+        )}>
+          {subject || `任务 #${taskId}`}
+        </p>
+      </div>
+      <Badge variant="outline" className={cn("text-xs shrink-0", {
+        "bg-success/10 text-success border-success/20": displayStatus === "completed",
+        "bg-info/10 text-info border-info/20": displayStatus === "in_progress",
+        "bg-muted/10 text-muted-foreground border-muted/20": displayStatus === "pending",
+        "bg-destructive/10 text-destructive border-destructive/20": displayStatus === "deleted",
+      })}>
+        {statusLabels[displayStatus] || displayStatus}
+      </Badge>
     </div>
   );
 };
