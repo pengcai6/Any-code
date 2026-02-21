@@ -86,7 +86,7 @@ function buildTaskListFromMessages(messages: any[]): TaskItem[] {
         if (inputData) {
           let taskId: string | null = null;
           const contentStr = typeof block.content === 'string' ? block.content : '';
-          const match = contentStr.match(/Task #(\d+)/);
+          const match = contentStr.match(/#(\d+)/);
           if (match) taskId = match[1];
 
           if (!taskId && msg.toolUseResult?.task?.id) {
