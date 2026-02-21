@@ -2,27 +2,20 @@
  * Task Management Widgets - Claude Code 任务管理工具
  *
  * 核心组件：TaskListAggregateWidget
- * 从同一消息中的多个 TaskCreate/TaskUpdate 工具调用
- * 聚合重建完整的任务列表状态，渲染为统一的任务面板
+ * 通过 useMessagesContext 扫描所有消息，从 TaskCreate/TaskUpdate 的
+ * tool_use (assistant消息) 和 tool_result (user消息) 中重建完整任务列表
  *
  * 数据流：
- * - TaskCreate input: { subject, description, activeForm }
- *   result.content: "Task #1 created successfully: ..."
- *   result.sourceMessage.toolUseResult: { task: { id: "1", subject: "..." } }
- *
- * - TaskUpdate input: { taskId: "1", status: "completed" }
- *   result.content: "Updated task #1 status to completed"
- *
- * taskId 来源优先级：
- * 1. result.sourceMessage.toolUseResult.task.id
- * 2. result.content 中的 "Task #N" 正则匹配
- * 3. 按 TaskCreate 出现顺序自增分配
+ * - assistant 消息 content[]: { type: "tool_use", name: "TaskCreate", id: "tooluse_xxx", input: { subject, description } }
+ * - user 消息 content[]: { type: "tool_result", tool_use_id: "tooluse_xxx", content: "Task #1 created..." }
+ * - user 消息顶层: toolUseResult: { task: { id: "1", subject: "..." } }
  */
 
 import React from "react";
 import { CheckCircle2, Clock, Circle, Trash2, ListTodo } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useMessagesContext } from "@/contexts/MessagesContext";
 
 const statusIcons: Record<string, React.ReactNode> = {
   completed: <CheckCircle2 className="h-4 w-4 text-success" />,
@@ -45,10 +38,106 @@ interface TaskItem {
   description?: string;
 }
 
-// 模块级任务状态表，跨消息持久化
-const globalTaskStore = new Map<string, TaskItem>();
-// 自增 ID 计数器（当无法从 result 获取 taskId 时使用）
-let autoIncrementId = 0;
+// ============================================================================
+// 从所有消息中重建任务列表
+// ============================================================================
+
+function buildTaskListFromMessages(messages: any[]): TaskItem[] {
+  const tasks = new Map<string, TaskItem>();
+  // toolUseId → { subject, description } 映射（从 assistant 的 tool_use 中提取）
+  const toolUseInputs = new Map<string, { subject: string; description?: string }>();
+
+  for (const msg of messages) {
+    const content = msg?.message?.content;
+    if (!Array.isArray(content)) continue;
+
+    for (const block of content) {
+      // 1. 从 assistant 消息中提取 TaskCreate 的 input
+      if (block.type === 'tool_use' && /^TaskCreate$/i.test(block.name)) {
+        const input = block.input || {};
+        if (input.subject) {
+          toolUseInputs.set(block.id, {
+            subject: input.subject,
+            description: input.description,
+          });
+        }
+      }
+
+      // 2. 从 assistant 消息中提取 TaskUpdate 的 input
+      if (block.type === 'tool_use' && /^TaskUpdate$/i.test(block.name)) {
+        const input = block.input || {};
+        const taskId = input.taskId ? String(input.taskId) : '';
+        if (taskId) {
+          const existing = tasks.get(taskId);
+          if (existing) {
+            if (input.status) existing.status = input.status;
+            if (input.subject) existing.subject = input.subject;
+          } else {
+            // TaskUpdate 先于 TaskCreate 被处理（不太可能但防御性处理）
+            tasks.set(taskId, {
+              id: taskId,
+              subject: input.subject || `任务 #${taskId}`,
+              status: input.status || 'pending',
+            });
+          }
+        }
+      }
+
+      // 3. 从 user 消息的 tool_result 中提取 taskId
+      if (block.type === 'tool_result' && block.tool_use_id) {
+        const toolUseId = block.tool_use_id;
+        const inputData = toolUseInputs.get(toolUseId);
+        if (inputData) {
+          // 从 content 字符串中提取 taskId
+          let taskId: string | null = null;
+          const contentStr = typeof block.content === 'string' ? block.content : '';
+          const match = contentStr.match(/Task #(\d+)/);
+          if (match) taskId = match[1];
+
+          // 也从顶层 toolUseResult 中提取
+          if (!taskId && msg.toolUseResult?.task?.id) {
+            taskId = String(msg.toolUseResult.task.id);
+          }
+
+          if (taskId) {
+            const existing = tasks.get(taskId);
+            if (!existing) {
+              tasks.set(taskId, {
+                id: taskId,
+                subject: inputData.subject,
+                status: 'pending',
+                description: inputData.description,
+              });
+            }
+            // 清理已匹配的 input
+            toolUseInputs.delete(toolUseId);
+          }
+        }
+      }
+    }
+  }
+
+  // 处理没有匹配到 tool_result 的 TaskCreate（还在执行中）
+  let autoId = tasks.size > 0
+    ? Math.max(...Array.from(tasks.keys()).map(Number).filter(n => !isNaN(n))) + 1
+    : 1;
+  for (const [, inputData] of toolUseInputs) {
+    tasks.set(String(autoId), {
+      id: String(autoId),
+      subject: inputData.subject,
+      status: 'pending',
+      description: inputData.description,
+    });
+    autoId++;
+  }
+
+  return Array.from(tasks.values())
+    .sort((a, b) => Number(a.id) - Number(b.id));
+}
+
+// ============================================================================
+// 导出类型（兼容 ToolCallsGroup）
+// ============================================================================
 
 export interface TaskToolCall {
   name: string;
@@ -61,87 +150,13 @@ export interface TaskListAggregateWidgetProps {
   toolCalls: TaskToolCall[];
 }
 
-/**
- * 从 result 中提取 taskId
- */
-function extractTaskId(result: any): string | null {
-  // 1. 从 toolUseResult.task.id
-  const fromToolUseResult = result?.sourceMessage?.toolUseResult?.task?.id;
-  if (fromToolUseResult) return String(fromToolUseResult);
+export const TaskListAggregateWidget: React.FC<TaskListAggregateWidgetProps> = () => {
+  const { messages } = useMessagesContext();
 
-  // 2. 从 content 字符串 "Task #N"
-  if (typeof result?.content === 'string') {
-    const match = result.content.match(/Task #(\d+)/);
-    if (match) return match[1];
-  }
-
-  return null;
-}
-
-/**
- * 从 tool_use 和 tool_result 中重建任务列表状态
- */
-function buildTaskList(toolCalls: TaskToolCall[]): TaskItem[] {
-  const creates = toolCalls.filter(t => /^TaskCreate$/i.test(t.name));
-  const updates = toolCalls.filter(t => /^TaskUpdate$/i.test(t.name));
-
-  // 处理 TaskCreate
-  for (const tc of creates) {
-    const subject = tc.input?.subject || '未命名任务';
-    const description = tc.input?.description;
-
-    // 尝试从 result 获取 taskId
-    let taskId = extractTaskId(tc.result);
-
-    // 如果没有 result（还在执行中），用自增 ID
-    if (!taskId) {
-      autoIncrementId++;
-      taskId = String(autoIncrementId);
-    }
-
-    // 只有当 globalTaskStore 中没有这个 ID 时才写入
-    // （避免重复渲染时覆盖已更新的状态）
-    if (!globalTaskStore.has(taskId)) {
-      globalTaskStore.set(taskId, {
-        id: taskId,
-        subject,
-        status: 'pending',
-        description,
-      });
-    }
-  }
-
-  // 处理 TaskUpdate
-  for (const tc of updates) {
-    const taskId = tc.input?.taskId ? String(tc.input.taskId) : '';
-    const newStatus = tc.input?.status;
-    const newSubject = tc.input?.subject;
-
-    if (taskId) {
-      const existing = globalTaskStore.get(taskId);
-      if (existing) {
-        if (newStatus) existing.status = newStatus;
-        if (newSubject) existing.subject = newSubject;
-        globalTaskStore.set(taskId, existing);
-      } else {
-        // 之前的消息中创建的任务，但 globalTaskStore 被清空了
-        globalTaskStore.set(taskId, {
-          id: taskId,
-          subject: newSubject || `任务 #${taskId}`,
-          status: newStatus || 'pending',
-        });
-      }
-    }
-  }
-
-  return Array.from(globalTaskStore.values())
-    .sort((a, b) => Number(a.id) - Number(b.id));
-}
-
-export const TaskListAggregateWidget: React.FC<TaskListAggregateWidgetProps> = ({
-  toolCalls,
-}) => {
-  const tasks = React.useMemo(() => buildTaskList(toolCalls), [toolCalls]);
+  const tasks = React.useMemo(
+    () => buildTaskListFromMessages(messages),
+    [messages]
+  );
 
   const completedCount = tasks.filter(t => t.status === 'completed').length;
   const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
