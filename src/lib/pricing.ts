@@ -31,7 +31,19 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
     cacheWrite: 18.75,
     cacheRead: 1.50
   },
+  'claude-opus-4.6-1m': {
+    input: 15.0,
+    output: 75.0,
+    cacheWrite: 18.75,
+    cacheRead: 1.50
+  },
   'claude-sonnet-4.6': {
+    input: 3.0,
+    output: 15.0,
+    cacheWrite: 3.75,
+    cacheRead: 0.30
+  },
+  'claude-sonnet-4.6-1m': {
     input: 3.0,
     output: 15.0,
     cacheWrite: 3.75,

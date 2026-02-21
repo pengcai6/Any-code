@@ -1,4 +1,4 @@
-import { Zap, Brain, Sparkles } from "lucide-react";
+import { Zap, Brain, Sparkles, Crown } from "lucide-react";
 import { ModelConfig, ThinkingModeConfig } from "./types";
 
 /**
@@ -22,6 +22,12 @@ export const MODELS: ModelConfig[] = [
     name: "Claude Opus 4.6",
     description: "Most capable model with advanced reasoning & coding",
     icon: <Sparkles className="h-4 w-4" />
+  },
+  {
+    id: "opus1m",
+    name: "Claude Opus 4.6 1M",
+    description: "Opus with 1 million token context",
+    icon: <Crown className="h-4 w-4" />
   }
 ];
 

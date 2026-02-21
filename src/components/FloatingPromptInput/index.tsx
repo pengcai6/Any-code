@@ -59,6 +59,7 @@ const FloatingPromptInputInner = (
     if (!modelStr) return null;
 
     const lowerModel = modelStr.toLowerCase();
+    if (lowerModel.includes("opus") && lowerModel.includes("1m")) return "opus1m";
     if (lowerModel.includes("opus")) return "opus";
     if (lowerModel.includes("sonnet") && lowerModel.includes("1m")) return "sonnet1m";
     if (lowerModel.includes("sonnet")) return "sonnet";
@@ -333,7 +334,7 @@ const FloatingPromptInputInner = (
 
           if (customModel && typeof customModel === 'string') {
             // Check if it's a built-in model ID (sonnet, opus, sonnet1m)
-            const isBuiltInModel = ['sonnet', 'opus', 'sonnet1m'].includes(customModel.toLowerCase());
+            const isBuiltInModel = ['sonnet', 'opus', 'sonnet1m', 'opus1m'].includes(customModel.toLowerCase());
 
             if (!isBuiltInModel) {
               // This is a custom model - add it to the list

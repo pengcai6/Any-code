@@ -101,7 +101,9 @@ export const CLAUDE_PRICING = {
 export const CLAUDE_CONTEXT_WINDOWS = {
   // Claude 4.6 Series
   'claude-opus-4-6': 200000,
+  'claude-opus-4-6[1m]': 1000000,
   'claude-sonnet-4-6': 200000,
+  'claude-sonnet-4-6[1m]': 1000000,
   // Claude 4.5 Series
   'claude-opus-4-5': 200000,
   'claude-opus-4-5-20251101': 200000,
@@ -276,6 +278,7 @@ export function getContextWindowSize(model?: string, engine?: string): number {
 // 标准化模型名称映射
 export const MODEL_ALIASES = {
   'opus': 'claude-opus-4-6', // 默认最新版本
+  'opus1m': 'claude-opus-4-6[1m]',
   'opus4.6': 'claude-opus-4-6',
   'opus-4.6': 'claude-opus-4-6',
   'opus4.5': 'claude-opus-4-5',
@@ -283,6 +286,7 @@ export const MODEL_ALIASES = {
   'opus4.1': 'claude-opus-4-1',
   'opus-4.1': 'claude-opus-4-1',
   'sonnet': 'claude-sonnet-4-6', // 默认最新版本
+  'sonnet1m': 'claude-sonnet-4-6[1m]',
   'sonnet4.6': 'claude-sonnet-4-6',
   'sonnet-4.6': 'claude-sonnet-4-6',
   'sonnet4.5': 'claude-sonnet-4-5',
