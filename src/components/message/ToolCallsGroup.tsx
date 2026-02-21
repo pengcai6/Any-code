@@ -249,6 +249,7 @@ const SingleToolCallComponent: React.FC<SingleToolCallProps> = ({ tool, result, 
     ? {
         content: result.content,
         is_error: result.isError,
+        sourceMessage: result.sourceMessage,
       }
     : undefined;
 

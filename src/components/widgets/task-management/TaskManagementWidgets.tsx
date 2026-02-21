@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { CheckCircle2, Clock, Circle, Plus, List, Eye, Trash2, ArrowRight } from "lucide-react";
+import { CheckCircle2, Clock, Circle, Plus, List, Eye, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -90,15 +90,10 @@ export const TaskUpdateWidget: React.FC<TaskUpdateWidgetProps> = ({
 }) => {
   const displayStatus = status || "pending";
 
-  // Try to extract subject from result content
+  // Try to extract subject from result's sourceMessage.toolUseResult
   let displaySubject = subject || activeForm;
-  if (!displaySubject && result?.content) {
-    const content = typeof result.content === 'string' ? result.content : '';
-    // "Task #1 updated successfully" → extract nothing useful
-    // But toolUseResult might have task info
-    if (!displaySubject && content) {
-      displaySubject = content;
-    }
+  if (!displaySubject && result?.sourceMessage?.toolUseResult?.task?.subject) {
+    displaySubject = result.sourceMessage.toolUseResult.task.subject;
   }
 
   return (
@@ -114,15 +109,12 @@ export const TaskUpdateWidget: React.FC<TaskUpdateWidgetProps> = ({
           <p className="text-sm truncate">{displaySubject}</p>
         )}
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <Badge
-          variant="outline"
-          className={cn("text-xs", statusColors[displayStatus])}
-        >
-          {statusLabels[displayStatus] || displayStatus}
-        </Badge>
-      </div>
+      <Badge
+        variant="outline"
+        className={cn("text-xs shrink-0", statusColors[displayStatus])}
+      >
+        {statusLabels[displayStatus] || displayStatus}
+      </Badge>
     </div>
   );
 };
