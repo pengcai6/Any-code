@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { toolRegistry } from '@/lib/toolRegistry';
 import { useToolResults } from '@/hooks/useToolResults';
 import { useTranslation } from '@/hooks/useTranslation';
+import { TaskListAggregateWidget } from '@/components/widgets';
+import type { TaskToolCall } from '@/components/widgets';
 import type { ClaudeStreamMessage } from '@/types/claude';
 import type { ToolResultEntry } from '@/contexts/MessagesContext';
 
@@ -104,6 +106,33 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
 
   if (toolCalls.length === 0) return null;
 
+  // 检测是否包含 Task 管理工具，聚合渲染为任务列表
+  const TASK_TOOL_PATTERN = /^(TaskCreate|TaskUpdate|TaskList|TaskGet)$/i;
+  const taskToolCalls = toolCalls.filter(t => TASK_TOOL_PATTERN.test(t.name));
+  const otherToolCalls = toolCalls.filter(t => !TASK_TOOL_PATTERN.test(t.name));
+
+  // 构建聚合 task 数据
+  const taskAggregateData: TaskToolCall[] | null = taskToolCalls.length > 0
+    ? taskToolCalls.map(t => ({
+        name: t.name,
+        input: t.input,
+        result: (() => {
+          const r = getResultById(t.id);
+          return r ? { content: r.content, is_error: r.isError, sourceMessage: r.sourceMessage } : undefined;
+        })(),
+        id: t.id,
+      }))
+    : null;
+
+  // 如果全部都是 task 工具，直接渲染聚合组件
+  if (taskAggregateData && otherToolCalls.length === 0) {
+    return (
+      <div className={cn('tool-single-call my-2', className)}>
+        <TaskListAggregateWidget toolCalls={taskAggregateData} />
+      </div>
+    );
+  }
+
   // 只有一个工具时，直接渲染不提供折叠功能
   if (toolCalls.length === 1) {
     const tool = toolCalls[0];
@@ -163,7 +192,12 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
         />
       ) : (
         <div className="space-y-2 p-4 bg-background">
-          {toolCalls.map((tool, index) => (
+          {/* 如果有 task 工具，先渲染聚合任务列表 */}
+          {taskAggregateData && (
+            <TaskListAggregateWidget toolCalls={taskAggregateData} />
+          )}
+          {/* 渲染非 task 工具 */}
+          {(taskAggregateData ? otherToolCalls : toolCalls).map((tool, index) => (
             <SingleToolCall
               key={tool.id}
               tool={tool}
@@ -171,7 +205,7 @@ export const ToolCallsGroup: React.FC<ToolCallsGroupProps> = ({
               status={getStatusById(tool.id)}
               onLinkDetected={onLinkDetected}
               index={index + 1}
-              total={toolCalls.length}
+              total={taskAggregateData ? otherToolCalls.length : toolCalls.length}
             />
           ))}
         </div>
