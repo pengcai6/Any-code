@@ -46,13 +46,16 @@ function buildTaskListFromMessages(messages: any[]): TaskItem[] {
   const tasks = new Map<string, TaskItem>();
   // toolUseId → { subject, description } 映射（从 assistant 的 tool_use 中提取）
   const toolUseInputs = new Map<string, { subject: string; description?: string }>();
+  // 暂存 TaskUpdate 操作，第二遍再应用
+  const pendingUpdates: Array<{ taskId: string; status?: string; subject?: string }> = [];
 
+  // === 第一遍：收集 TaskCreate inputs + tool_results，建立任务 ===
   for (const msg of messages) {
     const content = msg?.message?.content;
     if (!Array.isArray(content)) continue;
 
     for (const block of content) {
-      // 1. 从 assistant 消息中提取 TaskCreate 的 input
+      // 从 assistant 消息中提取 TaskCreate 的 input
       if (block.type === 'tool_use' && /^TaskCreate$/i.test(block.name)) {
         const input = block.input || {};
         if (input.subject) {
@@ -63,53 +66,40 @@ function buildTaskListFromMessages(messages: any[]): TaskItem[] {
         }
       }
 
-      // 2. 从 assistant 消息中提取 TaskUpdate 的 input
+      // 暂存 TaskUpdate 操作
       if (block.type === 'tool_use' && /^TaskUpdate$/i.test(block.name)) {
         const input = block.input || {};
         const taskId = input.taskId ? String(input.taskId) : '';
         if (taskId) {
-          const existing = tasks.get(taskId);
-          if (existing) {
-            if (input.status) existing.status = input.status;
-            if (input.subject) existing.subject = input.subject;
-          } else {
-            // TaskUpdate 先于 TaskCreate 被处理（不太可能但防御性处理）
-            tasks.set(taskId, {
-              id: taskId,
-              subject: input.subject || `任务 #${taskId}`,
-              status: input.status || 'pending',
-            });
-          }
+          pendingUpdates.push({
+            taskId,
+            status: input.status,
+            subject: input.subject,
+          });
         }
       }
 
-      // 3. 从 user 消息的 tool_result 中提取 taskId
+      // 从 user 消息的 tool_result 中提取 taskId，建立任务
       if (block.type === 'tool_result' && block.tool_use_id) {
         const toolUseId = block.tool_use_id;
         const inputData = toolUseInputs.get(toolUseId);
         if (inputData) {
-          // 从 content 字符串中提取 taskId
           let taskId: string | null = null;
           const contentStr = typeof block.content === 'string' ? block.content : '';
           const match = contentStr.match(/Task #(\d+)/);
           if (match) taskId = match[1];
 
-          // 也从顶层 toolUseResult 中提取
           if (!taskId && msg.toolUseResult?.task?.id) {
             taskId = String(msg.toolUseResult.task.id);
           }
 
           if (taskId) {
-            const existing = tasks.get(taskId);
-            if (!existing) {
-              tasks.set(taskId, {
-                id: taskId,
-                subject: inputData.subject,
-                status: 'pending',
-                description: inputData.description,
-              });
-            }
-            // 清理已匹配的 input
+            tasks.set(taskId, {
+              id: taskId,
+              subject: inputData.subject,
+              status: 'pending',
+              description: inputData.description,
+            });
             toolUseInputs.delete(toolUseId);
           }
         }
@@ -129,6 +119,21 @@ function buildTaskListFromMessages(messages: any[]): TaskItem[] {
       description: inputData.description,
     });
     autoId++;
+  }
+
+  // === 第二遍：应用 TaskUpdate 操作 ===
+  for (const update of pendingUpdates) {
+    const existing = tasks.get(update.taskId);
+    if (existing) {
+      if (update.status) existing.status = update.status;
+      if (update.subject) existing.subject = update.subject;
+    } else {
+      tasks.set(update.taskId, {
+        id: update.taskId,
+        subject: update.subject || `任务 #${update.taskId}`,
+        status: update.status || 'pending',
+      });
+    }
   }
 
   return Array.from(tasks.values())
